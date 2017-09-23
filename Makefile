@@ -1,15 +1,26 @@
-.PHONY: _build
+.PHONY: _build elm erlang
 
-BASE_DIR = $(shell pwd)
-REBAR    = $(BASE_DIR)/rebar3
+REBAR = ./rebar
+ELM		= ./elm
+ELM_FORMAT	= ./elm-format
 
-all: compile
+all: elm erlang
 
-compile:
+elm:
+	@$(ELM_FORMAT) apps/observerweb/elm --yes
+	@$(ELM) make --warn apps/observerweb/elm/Main.elm --output=apps/observerweb/priv/js/observerweb.js
+
+erlang:
 	@$(REBAR) compile
 
 clean:
+	rm -Rf apps/observerweb/priv/js/*
+	rm -Rf elm-stuff/build-artifacts
 	@$(REBAR) clean
 
+shell: elm erlang
+	@$(REBAR) shell
+
 rel:
-	@$(REBAR) release
+	mkdir -p release
+	docker build -t observerweb -f docker/prod.dockerfile .

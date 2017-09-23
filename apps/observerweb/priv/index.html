@@ -1,207 +1,34 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Observer Web</title>
-    <link rel="icon" href="img/favicon.ico" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.11.1/bootstrap-table.min.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.11.1/bootstrap-table.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/5.0.10/highcharts.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/5.0.10/js/themes/grid-light.js"></script>
-    <script src="js/main.js"></script>
-    <script>
-         $(document).ready(function(){
-             getNodes();
-             loadSysInfo();
-             setTimeout(function(){
-                 loadCharts();
-             }, 2000);
-             loadMAlocInfo();
-             loadProInfo();
-             $('ul#nodes').on("click", "li a", function(){
-                 var value = $(this).html();
-                 if(value !== "Connect Node"){
-                     changeNode(value);
-                 }
-             });
-         });
-    </script>
+  <meta charset="UTF-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <!-- here we pull in the webcomponents polyfill -->
+  <script src="js/bower_components/webcomponentsjs/webcomponents.js"></script>
+  <!-- This part took me a while to figure out, found it on a ML thread with
+       the help of Richard Feldman ultimately - basically, you need to use
+       shadow DOM or else nested webcomponents don't work right in strange but
+       awful ways. -->
+  <script>
+    window.Polymer = {
+      dom: 'shadow'
+    };
+  </script>
+  <!-- Then we pull in polymer with an import link -->
+  <link rel="import" href="js/bower_components/polymer/polymer.html">
+  <link rel="import" href="js/bower_components/google-chart/google-chart.html">
+  <link rel="icon" href="img/favicon.ico" type="image/vnd.microsoft.icon" />
+  <title>Observer Web</title>
 </head>
 <body>
-<div class="container">
-    <nav class="navbar navbar-default" role="navigation">
-        <div class="container-fluid">
-            <div class="navbar-header">
-                <a class="navbar-brand" href="https://github.com/freecnpro/observerweb">ObserverWeb</a>
-            </div>
-            <div class="collapse navbar-collapse" id="bs-navbar-collapse-1">
-                <ul class="nav navbar-nav">
-                    <li class="active"><a href="#system" role="tab" data-toggle="tab">System</a></li>
-                    <li><a href="#load-charts" role="tab" data-toggle="tab">Load Charts</a></li>
-                    <li><a href="#memory-alloc" role="tab" data-toggle="tab">Memory Allocators</a></li>
-                    <li><a href="#applications" role="tab" data-toggle="tab">Appications</a></li>
-                    <li><a href="#processes" role="tab" data-toggle="tab">Processes</a></li>
-                    <li><a href="#table-viewer" role="tab" data-toggle="tab">Table Viewer</a></li>
-                    <li><a href="#trace-overview" role="tab" data-toggle="tab">Trace Overview</a></li>
-                </ul>
-
-                <ul class="nav navbar-nav navbar-right">
-                    <li class="dropdown">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Nodes <span class="caret"></span></a>
-                        <ul class="dropdown-menu" role="menu" id="nodes">
-                            <li role="presentation"><a role="menuitem" href="#connect_node_modal" data-toggle="modal">Connect Node</a></li>
-                        </ul>
-                    </li>
-                </ul>
-            </div><!-- /.navbar-collapse -->
-        </div><!-- /.container-fluid -->
-    </nav>
-
-    <div class="tab-content" id="meneTabContent">
-        <div class="tab-pane active" id="system">
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="panel panel-info">
-                        <div class="panel-heading">
-                            <h3 class="panel-title">System and Architecture</h3>
-                        </div>
-                        <table class="table table-bordered">
-                            <tbody style="font-size:12px" id="system-architecture">
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="panel panel-info">
-                        <div class="panel-heading">
-                            <h3 class="panel-title">Memory Usage</h3>
-                        </div>
-                        <table class="table table-bordered">
-                            <tbody style="font-size:12px" id="memory-info">
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="panel panel-info">
-                        <div class="panel-heading">
-                            <h3 class="panel-title">CPU's and Threads</h3>
-                        </div>
-                        <table class="table table-bordered">
-                            <tbody style="font-size:12px" id="cpu-threads">
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="panel panel-info">
-                        <div class="panel-heading">
-                            <h3 class="panel-title">Statistics</h3>
-                        </div>
-                        <table class="table table-bordered">
-                            <tbody style="font-size:12px" id="statistics">
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="tab-pane" id="load-charts">
-            <div class="row">
-                <div class="col-md-12">
-                    <div id="scheduler-utilization" style="min-width:800px;height:300px"></div>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-6">
-                    <div id="memory-usage" style="min-width:350px;height:300px"></div>
-                </div>
-                <div class="col-md-6">
-                    <div id="io-usage" style="min-width:350px;height:300px"></div>
-                </div>
-            </div>
-        </div>
-        <div class="tab-pane" id="memory-alloc">
-            <div class="row">
-                <div class="col-md-12">
-                    <div id="carriers-size" style="min-width:800px;height:300px"></div>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-12">
-                    <div id="carriers-utilization" style="min-width:800px;height:300px"></div>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-12">
-                    <table data-toggle="table" data-classes="table table-bordered" data-cache="false" data-height="200">
-                        <thead>
-                        <tr>
-                            <th>Allocator Type</th>
-                            <th>Block size(KB)</th>
-                            <th>Carrier size(KB)</th>
-                        </tr>
-                        </thead>
-                        <tbody id="alloctor-table">
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        <div class="tab-pane" id="applications"><p>Applications</p></div>
-        <div class="tab-pane" id="processes">
-            <table data-toggle="table" data-classes="table table-bordered" data-cache="false" data-height="600">
-                <thead>
-                <tr>
-                    <th>Pid</th>
-                    <th>Name or Initial Func</th>
-                    <th>Reds</th>
-                    <th>Memory</th>
-                    <th>MsgQ</th>
-                    <th>Current Function</th>
-                </tr>
-                </thead>
-                <tbody id="process-table">
-                </tbody>
-            </table>
-        </div>
-        <div class="tab-pane" id="table-viewer"><p>Table Viewer</p></div>
-        <div class="tab-pane" id="trace-overview"><p>Trace Overview</p></div>
-    </div>
-</div> <!-- /container -->
-
-<div class="modal fade" id="connect_node_modal">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-                <h4 class="modal-title">Connect node</h4>
-            </div>
-            <div class="modal-body">
-                <form role="form" id="connect_node_form">
-                    <div class="form-group">
-                        <label class="control-label" for="nodename">Node name</label>
-                        <input type="text" class="form-control" name='nodename' id="nodename" placeholder="nodename@nodehost"/>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label" for="cookie">Secret cookie</label>
-                        <input type="text" class="form-control" name='cookie' id="cookie" placeholder="Secret cookie" />
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="connectNode()">OK</button>
-            </div>
-        </div><!-- /.modal-content -->
-    </div><!-- /.modal-dialog -->
-</div><!-- /.modal -->
-
+<div id="main"></div>
+<script src="js/observerweb.js"></script>
+<script>
+    var node = document.getElementById('main');
+    var app = Elm.Main.embed(node);
+    // Note: if your Elm module is named "MyThing.Root" you
+    // would call "Elm.MyThing.Root.embed(node)" instead.
+</script>
 </body>
 </html>

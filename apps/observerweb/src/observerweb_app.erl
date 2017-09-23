@@ -33,21 +33,15 @@ start(_StartType, _StartArgs) ->
         ]}
     ]),
 
-    NbAcceptors = observerweb:env(acceptors, 100),
+    NbAcceptors = observerweb:env(acceptors, 10),
     Port = observerweb:env(port, 8080),
 
     {ok, _} = cowboy:start_http(http, NbAcceptors, [{port, Port}], [
         {env, [{dispatch, Dispatch}]}
     ]),
 
-    dets:open_file(observer_table, [{type, set}, {file, "observer_table"}]),
-    dets:close(observer_table),
-
     observerweb_sup:start_link().
 
 -spec(stop(State :: term()) -> term()).
 stop(_State) ->
-    {ok, Ref} = dets:open_file("observer_table"),
-    dets:delete_all_objects(Ref),
-    dets:close(Ref),
     ok.

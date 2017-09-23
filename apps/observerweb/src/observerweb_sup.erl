@@ -32,10 +32,6 @@ start_link() ->
 %%% Supervisor callbacks
 %%%===================================================================
 
--spec(init(Args :: term()) ->
-    {ok, {SupFlags :: {RestartStrategy :: supervisor:strategy(),
-    MaxR :: non_neg_integer(), MaxT :: non_neg_integer()},
-    [ChildSpec :: supervisor:child_spec()]}} | ignore | {error, Reason :: term()}).
 init([]) ->
     RestartStrategy = one_for_one,
     MaxRestarts = 10,
@@ -43,10 +39,8 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    Restart = permanent,
-    Shutdown = 2000,
-    Type = worker,
+    %Restart = permanent,
+    %Shutdown = 2000,
+    %Type = worker,
 
-    AChild = {observerweb_pro, {observerweb_pro, start_link, []}, Restart, Shutdown, Type, [observerweb_pro]},
-
-    {ok, {SupFlags, [AChild]}}.
+    {ok, {SupFlags, []}}.

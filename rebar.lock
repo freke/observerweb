@@ -6,6 +6,10 @@
   {git,"https://github.com/ninenines/cowlib",
        {ref,"45f750db410a4b08c68d142ad0af839f544c5d3d"}},
   1},
+ {<<"iso8601">>,
+  {git,"https://github.com/kivra/erlang_iso8601",
+       {ref,"1398bfb2679e0978d32602693d48062c31550e6e"}},
+  0},
  {<<"jiffy">>,
   {git,"https://github.com/davisp/jiffy",
        {ref,"06aaf440e091c9fd5f8aea557ac760a33bd37130"}},
@@ -13,4 +17,8 @@
  {<<"ranch">>,
   {git,"https://github.com/ninenines/ranch",
        {ref,"a004ad710eddd0c21aaccc30d5633a76b06164b5"}},
-  1}].
+  1},
+ {<<"sync">>,
+  {git,"https://github.com/rustyio/sync.git",
+       {ref,"6e9d730c8674ee3fa27dd8146316f94d2d180f59"}},
+  0}].

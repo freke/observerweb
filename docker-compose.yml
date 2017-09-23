@@ -1,0 +1,36 @@
+version: '3'
+
+services:
+  observerweb_erlang:
+    build:
+      context: ./docker
+      dockerfile: erlang_dev.dockerfile
+    ports:
+     - "8080:8080"
+    volumes:
+      - .:/src/observerweb
+      - rebar3:/root/.cache/rebar3
+    working_dir: /src/observerweb
+    stdin_open: true
+    tty: true
+    command: bash -c "epmd -daemon && rebar3 auto --name observerweb@observerweb_erlang --setcookie observerweb"
+#    environment:
+#     - DEBUG=1
+  observerweb_elm:
+    build:
+      context: ./docker
+      dockerfile: elm_dev.dockerfile
+    ports:
+     - "8000:8000"
+     - "3000:3000"
+    volumes:
+      - .:/code
+    working_dir: /code
+    environment:
+      - HOME=/tmp
+    command: elm-analyse -s
+
+
+volumes:
+  rebar3:
+    driver: local

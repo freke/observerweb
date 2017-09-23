@@ -1,0 +1,17 @@
+{
+  "name": "observerweb",
+  "homepage": "https://github.com/freke/observerweb",
+  "description": "",
+  "main": "",
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "google-chart": "^1.1.2"
+  }
+}

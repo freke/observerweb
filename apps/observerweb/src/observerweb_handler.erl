@@ -32,40 +32,57 @@ process(<<"POST">>, false, Req) ->
     cowboy_req:reply(400, [], <<"Missing body.">>, Req);
 process(<<"POST">>, true, Req) ->
     {ok, PostVals, Req2} = cowboy_req:body_qs(Req),
+    {N1, Req3} = cowboy_req:cookie(<<"current_node">>, Req2, atom_to_binary(node(),latin1)),
+    CurrentNode = binary_to_atom(N1,latin1),
     case proplists:get_value(<<"action">>, PostVals) of
         <<"get_sys">> ->
-            Body = do_process(get_sys, get_acc_node()),
-            reply(200, Body, Req2);
+            Body = do_process(get_sys, CurrentNode),
+            reply(200, Body, Req3);
         <<"get_perf">> ->
             Type = proplists:get_value(<<"type">>, PostVals),
-            Body = do_process(get_perf, {get_acc_node(), binary_to_atom(Type, latin1)}),
-            reply(200, Body, Req2);
+            Body = do_process(get_perf, {CurrentNode, binary_to_atom(Type, latin1)}),
+            reply(200, Body, Req3);
         <<"get_malloc">> ->
-            Body = do_process(get_malloc, get_acc_node()),
-            reply(200, Body, Req2);
+            Body = do_process(get_malloc, CurrentNode),
+            reply(200, Body, Req3);
         <<"get_pro">> ->
-            Type = proplists:get_value(<<"type">>, PostVals),
-            Body = do_process(get_pro, Type),
-            reply(200, Body, Req2);
+            %Type = proplists:get_value(<<"type">>, PostVals),
+            Body = do_process(get_pro, CurrentNode),
+            reply(200, Body, Req3);
         <<"change_node">> ->
-            Node = proplists:get_value(<<"node">>, PostVals),
-            Result = do_process(change_node, Node),
-            reply(200, Result, Req2);
+            Node = binary_to_atom(proplists:get_value(<<"node">>, PostVals), latin1),
+            Result = case do_process(change_node, Node) of
+                pang ->
+                    jiffy:encode({[{node,Node},{connected,false}]});
+                pong ->
+                    %insert_Data(acc_node, Node),
+                    observerweb_pro:change_node(Node),
+                    jiffy:encode({[{node,Node},{connected,true}]});
+                false ->
+                    jiffy:encode({[{node,Node},{connected,false},{message, <<"Node invalid">>}]})
+            end,
+            reply(200, Result, Req3);
         <<"connect_node">> ->
             Node = proplists:get_value(<<"node">>, PostVals),
             Cookie = proplists:get_value(<<"cookie">>, PostVals),
-            Result = case do_process(connect_node, {Node, Cookie}) of
-                 pang -> <<"Connect failed">>;
-                 pong -> <<"ok">>
-               end,
-            reply(200, Result, Req2);
+            {Result,Req4} = case do_process(connect_node, {Node, Cookie}) of
+              pang ->
+                { jiffy:encode({[{node,Node},{connected,false},{message, <<"Connection failed">>}]})
+                , Req3
+                };
+              pong ->
+                { jiffy:encode({[{node,Node},{connected,true}]})
+                , cowboy_req:set_resp_cookie(<<"current_node">>, Node, [], Req3)
+                }
+            end,
+            reply(200, Result, Req4);
         <<"get_nodes">> ->
             Body = jiffy:encode({[{<<"nodes">>, get_bare_nodes()}]}),
-            reply(200, Body, Req2);
+            reply(200, Body, Req3);
         <<"del_node">> ->
             Node = proplists:get_value(<<"node">>, PostVals),
             del_node(Node),
-            Req2
+            Req3
     end;
 process(_, _, Req) ->
     %% Method not allowed.
@@ -80,7 +97,7 @@ do_process(get_sys, Node) ->
     [{_MemName, MemValue},{_StatName, StatValue}] = Stat,
     jiffy:encode({[{<<"system">>, wrap_info(info, SysValue)},
         {<<"cpu">>, wrap_info(info, CPUValue)},
-        {<<"memory">>, wrap_info(info,MemValue)},
+        {<<"memory">>, wrap_info(info, MemValue)},
         {<<"statistics">>, wrap_info(info, StatValue)}]});
 
 do_process(get_perf, {Node, Type}) ->
@@ -90,37 +107,23 @@ do_process(get_perf, {Node, Type}) ->
             Data = wrap_info(scheduler, Data0),
             jiffy:encode({[{<<"scheduler">>, Data}]});
         _ ->
-            jiffy:encode({Data0})
+            jiffy:encode({[{<<"time">>,iso8601:now()}|Data0]})
     end;
 
 do_process(get_malloc, Node) ->
     Data = observerweb_alloc:memory_alloc_info(Node),
     jiffy:encode({[{<<"allocator">>, wrap_info(alloc, Data)}]});
 
-do_process(get_pro, Type) ->
-    case Type of
-        <<"all">> ->
-            Data = observerweb_pro:update(),
-            jiffy:encode(Data);
-        _ ->
-            io:format("Type: ~p~n", [Type])
-    end;
+do_process(get_pro, Node) ->
+  Data = observerweb_pro:pro_info(Node),
+  jiffy:encode({[{<<"process_table">>, Data}]});
 
-do_process(change_node, Value) ->
-    Node = binary_to_atom(Value, latin1),
-    case lists:keyfind(Node, 1, get_nodes()) of
-        {_, Cookie} ->
-        erlang:set_cookie(node(), Cookie),
-        case net_adm:ping(Node) of
-            pang ->
-                <<"false">>;
-            pong ->
-                insert_Data(acc_node, Node),
-                observerweb_pro:change_node(Node),
-                <<"true">>
-        end;
+do_process(change_node, Node) ->
+    case lists:member(Node, get_bare_nodes()) of
+        true ->
+            net_adm:ping(Node);
         false ->
-            <<"Node invalid">>
+            false
     end;
 do_process(connect_node, {Value1, Value2}) ->
     try
@@ -128,71 +131,54 @@ do_process(connect_node, {Value1, Value2}) ->
         Cookie = binary_to_atom(Value2, latin1),
         io:format("Node: ~p~nCookie:~p~n", [Node, Cookie]),
         erlang:set_cookie(node(), Cookie),
-        case net_adm:ping(Node) of
-            pang -> pang;
-            pong ->
-                add_node({Node, Cookie}),
-                insert_Data(acc_node, Node),
-            pong
-        end
+        net_adm:ping(Node)
     catch _:_ ->
         pang
     end.
 
-add_node({Node, Cookie}) ->
-    Nodes = get_nodes(),
-    NewNodes = case lists:keyfind(Node, 1, Nodes) of
-               false -> [{Node, Cookie} | Nodes];
-               _ -> [{Node, Cookie} | lists:keydelete(Node, 1, Nodes)]
-             end,
-    io:format("Nodes: ~p~n~p~n", [Nodes, NewNodes]),
-    insert_Data(nodes, NewNodes).
-
 del_node(Node) ->
-    NewNodes = lists:keydelete(Node, 1, get_nodes()),
-    insert_Data(nodes, NewNodes).
+    erlang:disconnect_node(Node).
 
 wrap_info(Type, Info) ->
-    wrap_info2(Type, Info, []).
+    {[{<<"time">>,iso8601:now()}, {data,  wrap_info2(Type, Info, [])}]}.
 
 wrap_info2(alloc, [], Data) -> lists:reverse(Data);
 wrap_info2(alloc, [{Name, BS, CS}|Alloc], Data) ->
-    wrap_info2(alloc, Alloc, [{[{<<"name">>, Name}, {<<"bs">>, (BS div 1024)}, {<<"cs">>, (CS div 1024)}]} | Data]);
+    wrap_info2( alloc
+              , Alloc
+              , [ { [ {<<"name">>, Name}
+                    , {<<"bs">>, (BS div 1024)}
+                    , {<<"cs">>, (CS div 1024)}
+                    ]
+                  }
+                | Data
+                ]
+              );
 
 wrap_info2(scheduler, [], Data) -> lists:reverse(Data);
 wrap_info2(scheduler, [{SchedulerId, ActiveTime, TotalTime}|Scheduler], Data) ->
-    wrap_info2(scheduler, Scheduler, [{[{<<"shcedulerid">>, SchedulerId},{<<"activetime">>, ActiveTime},{<<"totaltime">>, TotalTime}]} | Data]);
+    wrap_info2( scheduler
+              , Scheduler
+              , [ { [ {<<"schedulerid">>, SchedulerId}
+                    , {<<"activetime">>, ActiveTime}
+                    , {<<"totaltime">>, TotalTime}
+                    ]
+                  }
+                | Data
+                ]
+              );
 
 wrap_info2(info, [], Data) -> lists:reverse(Data);
 wrap_info2(info, [{Name, Value}|Stat], Data) ->
-    wrap_info2(info, Stat, [{[{<<"name">>, list_to_binary(Name)}, {<<"value">>, list_to_binary(observerweb_lib:to_str(Value))}]} | Data]).
-
-get_acc_node() ->
-    case get_data(acc_node) of
-        [] -> node();
-        [{_, Node}] -> Node
-    end.
-
-get_nodes() ->
-    case get_data(nodes) of
-        [] -> [{node(), erlang:get_cookie()}];
-        [{_, Nodes1}] -> Nodes1
-    end.
+    wrap_info2( info
+              , Stat
+              , [ { [ {<<"name">>, list_to_binary(Name)}
+                    , {<<"value">>, list_to_binary(observerweb_lib:to_str(Value))}
+                    ]
+                  }
+                | Data
+                ]
+              ).
 
 get_bare_nodes() ->
-    get_bare_nodess(get_nodes(), []).
-
-get_bare_nodess([], Data) -> lists:usort(Data);
-get_bare_nodess([{Node, _Cookie} | Nodes], Data) ->
-    get_bare_nodess(Nodes, [atom_to_binary(Node, latin1) | Data]).
-
-get_data(Key) ->
-    {ok, Dets} = dets:open_file("observer_table"),
-    Data = dets:lookup(Dets, Key),
-    dets:close(Dets),
-    Data.
-
-insert_Data(Key, Data) ->
-    {ok, Dets} = dets:open_file("observer_table"),
-    dets:insert(Dets, {Key, Data}),
-    dets:close(Dets).
+  [node() | nodes(connected)].
