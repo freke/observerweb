@@ -9,6 +9,7 @@ services:
      - "8080:8080"
     volumes:
       - .:/src/observerweb
+      - ./bower_components:/src/observerweb/apps/observerweb/priv/js/bower_components
       - rebar3:/root/.cache/rebar3
     working_dir: /src/observerweb
     stdin_open: true

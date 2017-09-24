@@ -7,6 +7,7 @@ import Pages.About as About
 import Pages.Applications as Applications
 import Pages.LoadCharts as LoadCharts
 import Pages.MemoryAllocators as MemoryAllocators
+import Pages.Ports as Ports
 import Pages.Process as Process
 import Pages.Processes as Processes
 import Pages.System as System
@@ -22,6 +23,7 @@ type Page
     | MemoryAllocators MemoryAllocators.Model
     | Processes Processes.Model
     | Process Process.Model
+    | Ports Ports.Model
     | System System.Model
     | TableViewer TableViewer.Model
     | TraceOverview TraceOverview.Model

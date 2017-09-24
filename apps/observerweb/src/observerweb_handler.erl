@@ -49,6 +49,12 @@ process(<<"POST">>, true, Req) ->
             %Type = proplists:get_value(<<"type">>, PostVals),
             Body = do_process(get_pro, CurrentNode),
             reply(200, Body, Req3);
+        <<"get_ports">> ->
+            Body = do_process(get_ports, CurrentNode),
+            reply(200, Body, Req3);
+        <<"get_tables">> ->
+            Body = do_process(get_tables, CurrentNode),
+            reply(200, Body, Req3);
         <<"change_node">> ->
             Node = binary_to_atom(proplists:get_value(<<"node">>, PostVals), latin1),
             Result = case do_process(change_node, Node) of
@@ -117,6 +123,14 @@ do_process(get_malloc, Node) ->
 do_process(get_pro, Node) ->
   Data = observerweb_pro:pro_info(Node),
   jiffy:encode({[{<<"process_table">>, Data}]});
+
+do_process(get_ports, Node) ->
+  Data = observerweb_port:port_info(Node),
+  jiffy:encode({[{<<"port_table">>, Data}]});
+
+do_process(get_tables, Node) ->
+  Data = observerweb_table:table_info(Node),
+  jiffy:encode({[{<<"ets_table">>, Data}]});
 
 do_process(change_node, Node) ->
     case lists:member(Node, get_bare_nodes()) of

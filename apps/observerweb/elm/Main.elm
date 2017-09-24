@@ -12,6 +12,7 @@ import Pages.About as About
 import Pages.Applications as Applications
 import Pages.LoadCharts as LoadCharts
 import Pages.MemoryAllocators as MemoryAllocators
+import Pages.Ports as Ports
 import Pages.Process as Process
 import Pages.Processes as Processes
 import Pages.System as System
@@ -97,6 +98,9 @@ update msg model =
         ( Models.Processes sub_model, Msgs.ProcessesMsg a ) ->
             toPage Models.Processes Msgs.ProcessesMsg Processes.update a sub_model
 
+        ( Models.Ports sub_model, Msgs.PortsMsg a ) ->
+            toPage Models.Ports Msgs.PortsMsg Ports.update a sub_model
+
         ( Models.TableViewer sub_model, Msgs.TableViewerMsg a ) ->
             toPage Models.TableViewer Msgs.TableViewerMsg TableViewer.update a sub_model
 
@@ -181,16 +185,16 @@ routeToPage route =
             ( Models.Applications Applications.model, Cmd.none )
 
         Routing.LoadChartsRoute ->
-            ( Models.LoadCharts LoadCharts.model, Cmd.none )
+            ( Models.LoadCharts LoadCharts.model, Cmd.map Msgs.LoadChartsMsg LoadCharts.fetchdata )
 
         Routing.MemoryAllocatorsRoute ->
-            ( Models.MemoryAllocators MemoryAllocators.model, Cmd.none )
+            ( Models.MemoryAllocators MemoryAllocators.model, Cmd.map Msgs.MemoryAllocatorsMsg MemoryAllocators.fetchdata )
 
         Routing.SystemRoute ->
             ( Models.System System.model, Cmd.map Msgs.SystemMsg System.fetchdata )
 
         Routing.TableViewerRoute ->
-            ( Models.TableViewer TableViewer.model, Cmd.none )
+            ( Models.TableViewer TableViewer.model, Cmd.map Msgs.TableViewerMsg TableViewer.fetchdata )
 
         Routing.TraceOverviewRoute ->
             ( Models.TraceOverview TraceOverview.model, Cmd.none )
@@ -200,6 +204,9 @@ routeToPage route =
 
         Routing.ProcessRoute id ->
             ( Models.Process (Process.init id), Cmd.map Msgs.ProcessMsg Process.fetchdata )
+
+        Routing.PortsRoute ->
+            ( Models.Ports Ports.model, Cmd.map Msgs.PortsMsg Ports.fetchdata )
 
         Routing.NotFoundRoute ->
             ( Models.NotFound, Cmd.none )
@@ -260,6 +267,9 @@ subscriptions model =
 
                 Models.Processes sub_model ->
                     Sub.map Msgs.ProcessesMsg (Processes.subscriptions sub_model)
+
+                Models.Ports sub_model ->
+                    Sub.map Msgs.PortsMsg (Ports.subscriptions sub_model)
 
                 Models.System sub_model ->
                     Sub.map Msgs.SystemMsg (System.subscriptions sub_model)

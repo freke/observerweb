@@ -6,6 +6,7 @@ module Routing
         , loadChartsPath
         , memoryAllocatorsPath
         , parseLocation
+        , portsPath
         , processPath
         , processesPath
         , systemPath
@@ -31,6 +32,7 @@ type Route
     | TraceOverviewRoute
     | ProcessesRoute
     | ProcessRoute ProcessId
+    | PortsRoute
     | NotFoundRoute
 
 
@@ -44,6 +46,7 @@ matchers =
         , map MemoryAllocatorsRoute (s "memory_alloc")
         , map ProcessRoute (s "processes" </> string)
         , map ProcessesRoute (s "processes")
+        , map PortsRoute (s "ports")
         , map SystemRoute (s "system")
         , map TableViewerRoute (s "table_viewer")
         , map TraceOverviewRoute (s "trace_overview")
@@ -88,6 +91,11 @@ processPath id =
 processesPath : String
 processesPath =
     "#processes"
+
+
+portsPath : String
+portsPath =
+    "#ports"
 
 
 systemPath : String

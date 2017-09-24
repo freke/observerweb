@@ -1,13 +1,12 @@
-module Pages.TableViewer exposing (..)
+module Pages.Ports exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (href)
 import Http
-import Json.TablesData exposing (Tables, getTables)
+import Json.PortsData exposing (Ports, getPorts)
 import Material
 import Material.Card as Card
 import Material.Elevation as Elevation
-import Material.Icon as Icon
 import Material.Options as Options exposing (css, onClick)
 import Material.Table as Table
 import Routing
@@ -17,24 +16,24 @@ import Views.Page
 
 fetchdata : Cmd Msg
 fetchdata =
-    Http.send NewTables getTables
+    Http.send NewPorts getPorts
 
 
 type alias Model =
-    { tables : Maybe Tables
+    { ports : Maybe Ports
     , mdl : Material.Model
     }
 
 
 model : Model
 model =
-    { tables = Nothing
+    { ports = Nothing
     , mdl = Material.model
     }
 
 
 type Msg
-    = NewTables (Result Http.Error Tables)
+    = NewPorts (Result Http.Error Ports)
     | Mdl (Material.Msg Msg)
     | Tick Time
 
@@ -42,10 +41,10 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update action model =
     case action of
-        NewTables (Ok tables) ->
-            ( { model | tables = Just tables }, Cmd.none )
+        NewPorts (Ok ports) ->
+            ( { model | ports = Just ports }, Cmd.none )
 
-        NewTables (Err e) ->
+        NewPorts (Err e) ->
             ( model, Cmd.none )
 
         Mdl msg_ ->
@@ -58,61 +57,53 @@ update action model =
 view : Model -> Html Msg
 view model =
     let
-        tables =
-            case model.tables of
+        ports =
+            case model.ports of
                 Nothing ->
                     [ Table.tr [] [] ]
 
-                Just tables ->
-                    tables.tables
+                Just ports ->
+                    ports.ports
                         |> List.map
                             (\item ->
                                 Table.tr []
                                     [ Table.td
+                                        []
+                                        [ text item.id ]
+                                    , Table.td
                                         [ Table.numeric ]
                                         [ text item.name ]
                                     , Table.td
                                         [ Table.numeric ]
-                                        [ text item.table_type ]
-                                    , Table.td
-                                        [ Table.numeric ]
-                                        [ text item.protection ]
-                                    , Table.td
-                                        [ Table.numeric ]
-                                        [ a [ Routing.processPath item.owner |> href ] [ text item.owner ] ]
+                                        [ a [ Routing.processPath item.connected |> href ] [ text item.connected ] ]
                                     , Table.td
                                         []
-                                        [ text item.table_size ]
+                                        [ text item.input ]
                                     , Table.td
                                         []
-                                        [ text item.memory ]
+                                        [ text item.output ]
                                     , Table.td
                                         [ Table.numeric ]
-                                        [ if item.compressed then
-                                            Icon.view "done" [ css "width" "40px" ]
-                                          else
-                                            text ""
-                                        ]
+                                        (List.map (\l -> a [ Routing.processPath l |> href ] [ text l ]) item.links)
                                     ]
                             )
     in
     Card.view
         [ Elevation.e2, css "width" "100%", css "margin" "16px" ]
-        [ Card.title [] [ Card.head [] [ text "Tables Viewer" ] ]
+        [ Card.title [] [ Card.head [] [ text "Ports Table" ] ]
         , Card.text [ css "width" "100%", css "padding" "0" ]
             [ Table.table [ css "width" "100%", css "border" "0" ]
                 [ Table.thead []
                     [ Table.tr []
-                        [ Table.th [ Table.numeric, css "width" "28%" ] [ text "Name" ]
-                        , Table.th [ Table.numeric, css "width" "12%" ] [ text "Type" ]
-                        , Table.th [ Table.numeric, css "width" "12%" ] [ text "Protection" ]
-                        , Table.th [ Table.numeric, css "width" "12%" ] [ text "Owner" ]
-                        , Table.th [ css "width" "12%" ] [ text "Size" ]
-                        , Table.th [ css "width" "12%" ] [ text "Memory" ]
-                        , Table.th [ Table.numeric, css "width" "12%" ] [ text "Compressed" ]
+                        [ Table.th [ css "width" "10%" ] [ text "Id" ]
+                        , Table.th [ Table.numeric, css "width" "27%" ] [ text "Name" ]
+                        , Table.th [ Table.numeric, css "width" "10%" ] [ text "Owner" ]
+                        , Table.th [ css "width" "10%" ] [ text "Input" ]
+                        , Table.th [ css "width" "10%" ] [ text "Output" ]
+                        , Table.th [ Table.numeric, css "width" "33%" ] [ text "Links" ]
                         ]
                     ]
-                , Table.tbody [] tables
+                , Table.tbody [] ports
                 ]
             ]
         ]

@@ -17,6 +17,7 @@ import Pages.About as About
 import Pages.Applications as Applications
 import Pages.LoadCharts as LoadCharts
 import Pages.MemoryAllocators as MemoryAllocators
+import Pages.Ports as Ports
 import Pages.Process as Process
 import Pages.Processes as Processes
 import Pages.System as System
@@ -70,6 +71,9 @@ page model =
 
         Models.Process m ->
             Process.view m |> Html.map Msgs.ProcessMsg
+
+        Models.Ports m ->
+            Ports.view m |> Html.map Msgs.PortsMsg
 
         Models.NotFound ->
             notFoundView
@@ -190,6 +194,11 @@ drawers =
         , Options.onClick (Layout.toggleDrawer Msgs.Mdl)
         ]
         [ icon "settings_applications", text "Processes" ]
+    , Layout.link
+        [ Layout.href Routing.portsPath
+        , Options.onClick (Layout.toggleDrawer Msgs.Mdl)
+        ]
+        [ icon "usb", text "Ports" ]
     , Layout.link
         [ Layout.href Routing.tableViewerPath
         , Options.onClick (Layout.toggleDrawer Msgs.Mdl)
