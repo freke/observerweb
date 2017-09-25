@@ -1,7 +1,7 @@
 module Json.PortsData exposing (Ports, getPorts)
 
 import Http
-import Json.Decode exposing (Decoder, list, string)
+import Json.Decode exposing (Decoder, int, list, string)
 import Json.Decode.Pipeline exposing (decode, required)
 
 
@@ -11,12 +11,12 @@ getPorts =
 
 
 type alias Port =
-    { output : String
+    { output : Int
     , os_pid : String
     , name : String
     , links : List String
-    , input : String
-    , id : String
+    , input : Int
+    , id : Int
     , connected : String
     }
 
@@ -29,12 +29,12 @@ type alias Ports =
 portDecoder : Decoder Port
 portDecoder =
     decode Port
-        |> required "output" string
+        |> required "output" int
         |> required "os_pid" string
         |> required "name" string
         |> required "links" (list string)
-        |> required "input" string
-        |> required "id" string
+        |> required "input" int
+        |> required "id" int
         |> required "connected" string
 
 

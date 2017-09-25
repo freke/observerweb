@@ -45,7 +45,7 @@ Currently supported:
 - [x] Processes
 - [x] Process info
 - [x] Port info
-- [ ] Table viewer
+- [X] Table viewer
 - [ ] Trace Overview
 
 ## Usage

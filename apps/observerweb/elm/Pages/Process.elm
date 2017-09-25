@@ -100,7 +100,7 @@ overview_info process =
                 , Lists.li [ Lists.withSubtitle ]
                     [ Lists.content []
                         [ text "Message queue length"
-                        , Lists.subtitle [] [ text process.message_queue_len ]
+                        , Lists.subtitle [] [ text <| toString process.message_queue_len ]
                         ]
                     ]
                 , Lists.li [ Lists.withSubtitle ]
@@ -124,31 +124,31 @@ memory_info process =
                 [ Lists.li [ Lists.withSubtitle ]
                     [ Lists.content []
                         [ text "Total"
-                        , Lists.subtitle [] [ text process.memory ]
+                        , Lists.subtitle [] [ text <| toString process.memory ]
                         ]
                     ]
                 , Lists.li [ Lists.withSubtitle ]
                     [ Lists.content []
                         [ text "Total heap size"
-                        , Lists.subtitle [] [ text process.total_heap_size ]
+                        , Lists.subtitle [] [ text <| toString process.total_heap_size ]
                         ]
                     ]
                 , Lists.li [ Lists.withSubtitle ]
                     [ Lists.content []
                         [ text "Stack size"
-                        , Lists.subtitle [] [ text process.stack_size ]
+                        , Lists.subtitle [] [ text <| toString process.stack_size ]
                         ]
                     ]
                 , Lists.li [ Lists.withSubtitle ]
                     [ Lists.content []
                         [ text "GC min heap size"
-                        , Lists.subtitle [] [ text process.garbage_collection.min_heap_size ]
+                        , Lists.subtitle [] [ text <| toString process.garbage_collection.min_heap_size ]
                         ]
                     ]
                 , Lists.li [ Lists.withSubtitle ]
                     [ Lists.content []
                         [ text "GC fullsweep after"
-                        , Lists.subtitle [] [ text process.garbage_collection.fullsweep_after ]
+                        , Lists.subtitle [] [ text <| toString process.garbage_collection.fullsweep_after ]
                         ]
                     ]
                 ]
@@ -257,11 +257,8 @@ view model =
                         model.mdl
                         [ Button.icon, Button.ripple, onClick BackMsg ]
                         [ Icon.i "reply" ]
-                    , text "Process information"
+                    , text "Not found"
                     ]
-                , Options.styled p
-                    [ Typo.subhead ]
-                    [ text "Not found" ]
                 ]
                 |> Views.Page.body
 
@@ -277,11 +274,7 @@ view model =
                         model.mdl
                         [ Button.icon, Button.ripple, onClick BackMsg ]
                         [ Icon.i "reply" ]
-                    , text "Process information"
-                    ]
-                , Options.styled p
-                    [ Typo.subhead ]
-                    [ text (String.join " " [ process.registered_name, process.pid ])
+                    , text (String.join " " [ process.registered_name, process.pid ])
                     ]
                 , Options.styled div
                     []

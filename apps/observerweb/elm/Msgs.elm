@@ -13,6 +13,7 @@ import Pages.Ports as Ports
 import Pages.Process as Process
 import Pages.Processes as Processes
 import Pages.System as System
+import Pages.TableData as TableData
 import Pages.TableViewer as TableViewer
 import Pages.TraceOverview as TraceOverview
 
@@ -27,6 +28,7 @@ type Msg
     | ProcessesMsg Processes.Msg
     | PortsMsg Ports.Msg
     | TableViewerMsg TableViewer.Msg
+    | TableDataMsg TableData.Msg
     | TraceOverviewMsg TraceOverview.Msg
     | AboutMsg About.Msg
     | Mdl (Material.Msg Msg)

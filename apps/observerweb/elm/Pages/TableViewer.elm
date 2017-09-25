@@ -5,8 +5,6 @@ import Html.Attributes exposing (href)
 import Http
 import Json.TablesData exposing (Tables, getTables)
 import Material
-import Material.Card as Card
-import Material.Elevation as Elevation
 import Material.Icon as Icon
 import Material.Options as Options exposing (css, onClick)
 import Material.Table as Table
@@ -70,7 +68,11 @@ view model =
                                 Table.tr []
                                     [ Table.td
                                         [ Table.numeric ]
-                                        [ text item.name ]
+                                        [ if (item.protection /= "private") && (item.table_size > 0) then
+                                            a [ Routing.tablePath item.name |> href ] [ text item.name ]
+                                          else
+                                            text item.name
+                                        ]
                                     , Table.td
                                         [ Table.numeric ]
                                         [ text item.table_type ]
@@ -82,10 +84,10 @@ view model =
                                         [ a [ Routing.processPath item.owner |> href ] [ text item.owner ] ]
                                     , Table.td
                                         []
-                                        [ text item.table_size ]
+                                        [ text <| toString item.table_size ]
                                     , Table.td
                                         []
-                                        [ text item.memory ]
+                                        [ text <| toString item.memory ]
                                     , Table.td
                                         [ Table.numeric ]
                                         [ if item.compressed then
@@ -96,25 +98,19 @@ view model =
                                     ]
                             )
     in
-    Card.view
-        [ Elevation.e2, css "width" "100%", css "margin" "16px" ]
-        [ Card.title [] [ Card.head [] [ text "Tables Viewer" ] ]
-        , Card.text [ css "width" "100%", css "padding" "0" ]
-            [ Table.table [ css "width" "100%", css "border" "0" ]
-                [ Table.thead []
-                    [ Table.tr []
-                        [ Table.th [ Table.numeric, css "width" "28%" ] [ text "Name" ]
-                        , Table.th [ Table.numeric, css "width" "12%" ] [ text "Type" ]
-                        , Table.th [ Table.numeric, css "width" "12%" ] [ text "Protection" ]
-                        , Table.th [ Table.numeric, css "width" "12%" ] [ text "Owner" ]
-                        , Table.th [ css "width" "12%" ] [ text "Size" ]
-                        , Table.th [ css "width" "12%" ] [ text "Memory" ]
-                        , Table.th [ Table.numeric, css "width" "12%" ] [ text "Compressed" ]
-                        ]
-                    ]
-                , Table.tbody [] tables
+    Table.table [ css "width" "100%", css "border" "0" ]
+        [ Table.thead []
+            [ Table.tr []
+                [ Table.th [ Table.numeric, css "width" "28%" ] [ text "Name" ]
+                , Table.th [ Table.numeric, css "width" "12%" ] [ text "Type" ]
+                , Table.th [ Table.numeric, css "width" "12%" ] [ text "Protection" ]
+                , Table.th [ Table.numeric, css "width" "12%" ] [ text "Owner" ]
+                , Table.th [ css "width" "12%" ] [ text "Size" ]
+                , Table.th [ css "width" "12%" ] [ text "Memory" ]
+                , Table.th [ Table.numeric, css "width" "12%" ] [ text "Compressed" ]
                 ]
             ]
+        , Table.tbody [] tables
         ]
         |> Views.Page.body
 

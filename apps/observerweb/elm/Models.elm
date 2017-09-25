@@ -11,6 +11,7 @@ import Pages.Ports as Ports
 import Pages.Process as Process
 import Pages.Processes as Processes
 import Pages.System as System
+import Pages.TableData as TableData
 import Pages.TableViewer as TableViewer
 import Pages.TraceOverview as TraceOverview
 
@@ -26,6 +27,7 @@ type Page
     | Ports Ports.Model
     | System System.Model
     | TableViewer TableViewer.Model
+    | TableData TableData.Model
     | TraceOverview TraceOverview.Model
 
 

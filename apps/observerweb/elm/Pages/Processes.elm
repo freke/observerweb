@@ -5,8 +5,6 @@ import Html.Attributes exposing (class, href, value)
 import Http
 import Json.ProcessData exposing (Process, Processes, getProcesses)
 import Material
-import Material.Card as Card
-import Material.Elevation as Elevation
 import Material.Options as Options exposing (css, onClick)
 import Material.Table as Table
 import Routing
@@ -82,31 +80,25 @@ view model =
                                 Table.tr []
                                     [ Table.td [ Table.numeric ] [ a [ Routing.processPath item.pid |> href ] [ text item.pid ] ]
                                     , Table.td [ Table.numeric ] [ text (name item) ]
-                                    , Table.td [ Table.numeric ] [ text item.reductions ]
-                                    , Table.td [ Table.numeric ] [ text item.memory ]
-                                    , Table.td [ Table.numeric ] [ text item.message_queue_len ]
+                                    , Table.td [] [ text <| toString item.reductions ]
+                                    , Table.td [] [ text <| toString item.memory ]
+                                    , Table.td [] [ text <| toString item.message_queue_len ]
                                     , Table.td [ Table.numeric ] [ text item.current_function ]
                                     ]
                             )
     in
-    Card.view
-        [ Elevation.e2, css "width" "100%", css "margin" "16px" ]
-        [ Card.title [] [ Card.head [] [ text "Process Table" ] ]
-        , Card.text [ css "width" "100%", css "padding" "0" ]
-            [ Table.table [ css "width" "100%", css "border" "0" ]
-                [ Table.thead []
-                    [ Table.tr []
-                        [ Table.th [ Table.numeric, css "width" "13%" ] [ text "Pid" ]
-                        , Table.th [ Table.numeric, css "width" "24%" ] [ text "Name or Initial Func" ]
-                        , Table.th [ Table.numeric, css "width" "13%" ] [ text "Reds" ]
-                        , Table.th [ Table.numeric, css "width" "13%" ] [ text "Memory" ]
-                        , Table.th [ Table.numeric, css "width" "13%" ] [ text "MsgQ" ]
-                        , Table.th [ Table.numeric, css "width" "24%" ] [ text "Current Function" ]
-                        ]
-                    ]
-                , Table.tbody [] processes
+    Table.table [ css "width" "100%", css "border" "0" ]
+        [ Table.thead []
+            [ Table.tr []
+                [ Table.th [ Table.numeric, css "width" "13%" ] [ text "Pid" ]
+                , Table.th [ Table.numeric, css "width" "24%" ] [ text "Name or Initial Func" ]
+                , Table.th [ css "width" "13%" ] [ text "Reds" ]
+                , Table.th [ css "width" "13%" ] [ text "Memory" ]
+                , Table.th [ css "width" "13%" ] [ text "MsgQ" ]
+                , Table.th [ Table.numeric, css "width" "24%" ] [ text "Current Function" ]
                 ]
             ]
+        , Table.tbody [] processes
         ]
         |> Views.Page.body
 

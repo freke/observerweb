@@ -21,6 +21,7 @@ import Pages.Ports as Ports
 import Pages.Process as Process
 import Pages.Processes as Processes
 import Pages.System as System
+import Pages.TableData as TableData
 import Pages.TableViewer as TableViewer
 import Pages.TraceOverview as TraceOverview
 import Routing
@@ -63,6 +64,9 @@ page model =
         Models.TableViewer m ->
             TableViewer.view m |> Html.map Msgs.TableViewerMsg
 
+        Models.TableData m ->
+            TableData.view m |> Html.map Msgs.TableDataMsg
+
         Models.TraceOverview m ->
             TraceOverview.view m |> Html.map Msgs.TraceOverviewMsg
 
@@ -90,7 +94,7 @@ header : Models.Model -> List (Html Msg)
 header model =
     let
         title =
-            "TEST"
+            model.title
     in
     [ Layout.row
         [ Options.nop

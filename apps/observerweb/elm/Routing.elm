@@ -10,7 +10,9 @@ module Routing
         , processPath
         , processesPath
         , systemPath
+        , tablePath
         , tableViewerPath
+        , title
         , traceOverviewPath
         )
 
@@ -22,6 +24,10 @@ type alias ProcessId =
     String
 
 
+type alias TableId =
+    String
+
+
 type Route
     = AboutRoute
     | ApplicationsRoute
@@ -29,6 +35,7 @@ type Route
     | MemoryAllocatorsRoute
     | SystemRoute
     | TableViewerRoute
+    | TableRoute TableId
     | TraceOverviewRoute
     | ProcessesRoute
     | ProcessRoute ProcessId
@@ -49,6 +56,7 @@ matchers =
         , map PortsRoute (s "ports")
         , map SystemRoute (s "system")
         , map TableViewerRoute (s "table_viewer")
+        , map TableRoute (s "table_viewer" </> string)
         , map TraceOverviewRoute (s "trace_overview")
         ]
 
@@ -61,6 +69,46 @@ parseLocation location =
 
         Nothing ->
             NotFoundRoute
+
+
+title : Route -> String
+title route =
+    case route of
+        AboutRoute ->
+            "About"
+
+        ApplicationsRoute ->
+            "Applications"
+
+        LoadChartsRoute ->
+            "LoadCharts"
+
+        MemoryAllocatorsRoute ->
+            "MemoryAllocators"
+
+        SystemRoute ->
+            "System"
+
+        TableViewerRoute ->
+            "TableViewer"
+
+        TableRoute _ ->
+            "Table Data"
+
+        TraceOverviewRoute ->
+            "Trace Overview"
+
+        ProcessesRoute ->
+            "Processes"
+
+        ProcessRoute _ ->
+            "Process"
+
+        PortsRoute ->
+            "Ports"
+
+        NotFoundRoute ->
+            ""
 
 
 aboutPath : String
@@ -106,6 +154,11 @@ systemPath =
 tableViewerPath : String
 tableViewerPath =
     "#table_viewer"
+
+
+tablePath : TableId -> String
+tablePath id =
+    "#table_viewer/" ++ id
 
 
 traceOverviewPath : String

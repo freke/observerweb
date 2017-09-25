@@ -1,7 +1,7 @@
 module Json.ProcessData exposing (Process, Processes, getProcesses)
 
 import Http
-import Json.Decode exposing (Decoder, list, string)
+import Json.Decode exposing (Decoder, int, list, string)
 import Json.Decode.Pipeline exposing (decode, required)
 
 
@@ -12,16 +12,16 @@ getProcesses =
 
 type alias Process =
     { current_function : String
-    , memory : String
-    , message_queue_len : String
+    , memory : Int
+    , message_queue_len : Int
     , registered_name : String
     , initial_call : String
     , pid : String
-    , reductions : String
+    , reductions : Int
     , status : String
     , group_leader : String
-    , total_heap_size : String
-    , stack_size : String
+    , total_heap_size : Int
+    , stack_size : Int
     , links : List String
     , ancestors : List String
     , monitors : List String
@@ -30,8 +30,8 @@ type alias Process =
 
 
 type alias GarbageCollection =
-    { min_heap_size : String
-    , fullsweep_after : String
+    { min_heap_size : Int
+    , fullsweep_after : Int
     }
 
 
@@ -43,24 +43,24 @@ type alias Processes =
 gcDecoder : Decoder GarbageCollection
 gcDecoder =
     decode GarbageCollection
-        |> required "min_heap_size" string
-        |> required "fullsweep_after" string
+        |> required "min_heap_size" int
+        |> required "fullsweep_after" int
 
 
 processDecoder : Decoder Process
 processDecoder =
     decode Process
         |> required "current_function" string
-        |> required "memory" string
-        |> required "message_queue_len" string
+        |> required "memory" int
+        |> required "message_queue_len" int
         |> required "registered_name" string
         |> required "initial_call" string
         |> required "pid" string
-        |> required "reductions" string
+        |> required "reductions" int
         |> required "status" string
         |> required "group_leader" string
-        |> required "total_heap_size" string
-        |> required "stack_size" string
+        |> required "total_heap_size" int
+        |> required "stack_size" int
         |> required "links" (list string)
         |> required "ancestors" (list string)
         |> required "monitors" (list string)

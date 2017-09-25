@@ -31,6 +31,9 @@ port_info(Node, Port) ->
     PortInfo ->
       maps:map(
         fun
+          (output,V) -> V;
+          (input,V) -> V;
+          (id,V) -> V;
           (links,V) ->
             lists:map( fun(P) -> list_to_binary(observerweb_lib:to_str(P)) end, V );
           (_,V) ->

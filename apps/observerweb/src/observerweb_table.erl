@@ -9,7 +9,7 @@
 -author("davabe@hotmail.com").
 
 %% API
--export([table_info/1, table_info/2]).
+-export([table_info/1, table_info/2, table_data/2]).
 
 %%%===================================================================
 %%% API
@@ -31,11 +31,20 @@ table_info(Node, Table) ->
     TableInfo ->
       maps:map(
         fun
-          (compressed,V) ->
-            V;
+          (compressed,V) -> V;
+          (size,V) -> V;
+          (memory,V) -> V;
+          (keypos,V) -> V;
+          (named_table,V) -> V;
+          (write_concurrency,V) -> V;
+          (read_concurrency,V) -> V;
           (_,V) ->
             list_to_binary(observerweb_lib:to_str(V))
         end
         , maps:from_list(TableInfo)
         )
   end.
+
+table_data(Node, Tab) ->
+  D = observerweb:try_rpc(Node, ets, tab2list, [Tab]),
+  lists:map(fun(E) -> list_to_binary(io_lib:format("~tp", [E])) end, D).

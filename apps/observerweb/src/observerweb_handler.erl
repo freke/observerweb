@@ -53,7 +53,8 @@ process(<<"POST">>, true, Req) ->
             Body = do_process(get_ports, CurrentNode),
             reply(200, Body, Req3);
         <<"get_tables">> ->
-            Body = do_process(get_tables, CurrentNode),
+            Table = proplists:get_value(<<"table">>, PostVals),
+            Body = do_process(get_tables, {CurrentNode, Table}),
             reply(200, Body, Req3);
         <<"change_node">> ->
             Node = binary_to_atom(proplists:get_value(<<"node">>, PostVals), latin1),
@@ -128,9 +129,13 @@ do_process(get_ports, Node) ->
   Data = observerweb_port:port_info(Node),
   jiffy:encode({[{<<"port_table">>, Data}]});
 
-do_process(get_tables, Node) ->
+do_process(get_tables, {Node,undefined}) ->
   Data = observerweb_table:table_info(Node),
   jiffy:encode({[{<<"ets_table">>, Data}]});
+do_process(get_tables, {Node,Table}) ->
+  T = erlang:binary_to_existing_atom(Table, latin1),
+  Data = observerweb_table:table_data(Node,T),
+  jiffy:encode({[{<<"ets_table_data">>, Data}]});
 
 do_process(change_node, Node) ->
     case lists:member(Node, get_bare_nodes()) of

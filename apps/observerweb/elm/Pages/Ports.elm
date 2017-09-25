@@ -5,8 +5,6 @@ import Html.Attributes exposing (href)
 import Http
 import Json.PortsData exposing (Ports, getPorts)
 import Material
-import Material.Card as Card
-import Material.Elevation as Elevation
 import Material.Options as Options exposing (css, onClick)
 import Material.Table as Table
 import Routing
@@ -69,7 +67,7 @@ view model =
                                 Table.tr []
                                     [ Table.td
                                         []
-                                        [ text item.id ]
+                                        [ text <| toString item.id ]
                                     , Table.td
                                         [ Table.numeric ]
                                         [ text item.name ]
@@ -78,34 +76,28 @@ view model =
                                         [ a [ Routing.processPath item.connected |> href ] [ text item.connected ] ]
                                     , Table.td
                                         []
-                                        [ text item.input ]
+                                        [ text <| toString item.input ]
                                     , Table.td
                                         []
-                                        [ text item.output ]
+                                        [ text <| toString item.output ]
                                     , Table.td
                                         [ Table.numeric ]
                                         (List.map (\l -> a [ Routing.processPath l |> href ] [ text l ]) item.links)
                                     ]
                             )
     in
-    Card.view
-        [ Elevation.e2, css "width" "100%", css "margin" "16px" ]
-        [ Card.title [] [ Card.head [] [ text "Ports Table" ] ]
-        , Card.text [ css "width" "100%", css "padding" "0" ]
-            [ Table.table [ css "width" "100%", css "border" "0" ]
-                [ Table.thead []
-                    [ Table.tr []
-                        [ Table.th [ css "width" "10%" ] [ text "Id" ]
-                        , Table.th [ Table.numeric, css "width" "27%" ] [ text "Name" ]
-                        , Table.th [ Table.numeric, css "width" "10%" ] [ text "Owner" ]
-                        , Table.th [ css "width" "10%" ] [ text "Input" ]
-                        , Table.th [ css "width" "10%" ] [ text "Output" ]
-                        , Table.th [ Table.numeric, css "width" "33%" ] [ text "Links" ]
-                        ]
-                    ]
-                , Table.tbody [] ports
+    Table.table [ css "width" "100%", css "border" "0" ]
+        [ Table.thead []
+            [ Table.tr []
+                [ Table.th [ css "width" "10%" ] [ text "Id" ]
+                , Table.th [ Table.numeric, css "width" "27%" ] [ text "Name" ]
+                , Table.th [ Table.numeric, css "width" "10%" ] [ text "Owner" ]
+                , Table.th [ css "width" "10%" ] [ text "Input" ]
+                , Table.th [ css "width" "10%" ] [ text "Output" ]
+                , Table.th [ Table.numeric, css "width" "33%" ] [ text "Links" ]
                 ]
             ]
+        , Table.tbody [] ports
         ]
         |> Views.Page.body
 
