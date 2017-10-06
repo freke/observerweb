@@ -1,6 +1,6 @@
 {application, observerweb, [
     {description, "Observer web frontend"},
-    {vsn, "0.1.1"},
+    {vsn, "0.2.0"},
     {registered, []},
     {mod, {observerweb_app, []}},
     {applications, [

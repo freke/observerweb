@@ -186,7 +186,7 @@ routeToPage route =
             ( Models.About About.model, Cmd.none )
 
         Routing.ApplicationsRoute ->
-            ( Models.Applications Applications.model, Cmd.none )
+            ( Models.Applications Applications.init, Cmd.map Msgs.ApplicationsMsg Applications.fetchdata )
 
         Routing.LoadChartsRoute ->
             ( Models.LoadCharts LoadCharts.model, Cmd.map Msgs.LoadChartsMsg LoadCharts.fetchdata )

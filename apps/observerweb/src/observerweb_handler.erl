@@ -56,6 +56,10 @@ process(<<"POST">>, true, Req) ->
             Table = proplists:get_value(<<"table">>, PostVals),
             Body = do_process(get_tables, {CurrentNode, Table}),
             reply(200, Body, Req3);
+        <<"get_apps">> ->
+            App = proplists:get_value(<<"app">>, PostVals),
+            Body = do_process(get_apps, {CurrentNode, App}),
+            reply(200, Body, Req3);
         <<"change_node">> ->
             Node = binary_to_atom(proplists:get_value(<<"node">>, PostVals), latin1),
             Result = case do_process(change_node, Node) of
@@ -136,6 +140,14 @@ do_process(get_tables, {Node,Table}) ->
   T = erlang:binary_to_existing_atom(Table, latin1),
   Data = observerweb_table:table_data(Node,T),
   jiffy:encode({[{<<"ets_table_data">>, Data}]});
+
+do_process(get_apps, {Node,undefined}) ->
+  Data = observerweb_apps:apps(Node),
+  jiffy:encode(#{apps => Data});
+do_process(get_apps, {Node,App}) ->
+  A = erlang:binary_to_existing_atom(App, latin1),
+  Data = observerweb_apps:apps(Node,A),
+  jiffy:encode(#{app => Data});
 
 do_process(change_node, Node) ->
     case lists:member(Node, get_bare_nodes()) of
