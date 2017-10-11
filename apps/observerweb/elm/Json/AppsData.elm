@@ -1,4 +1,4 @@
-module Json.AppsData exposing (AppInfo, Apps, getAppInfo, getApps)
+module Json.AppsData exposing (AppInfo, Apps, Children, ProcessInfoApp, getAppInfo, getApps, unwrapChildren)
 
 import Http
 import Json.Decode as Decode exposing (Decoder, int, list, string)
@@ -37,6 +37,11 @@ type alias ProcessInfoApp =
 
 type Children
     = Children (List ProcessInfoApp)
+
+
+unwrapChildren : Children -> List ProcessInfoApp
+unwrapChildren (Children children) =
+    children
 
 
 getApps : Http.Request Apps

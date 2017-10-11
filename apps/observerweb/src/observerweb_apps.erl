@@ -75,7 +75,7 @@ structure_pid(Node, {Pid, Name}) ->
   case proplists:get_value('$ancestors', Dictionary, []) of
     [Pid] ->
       #{ pid=> list_to_binary(observerweb_lib:to_str(Pid))
-      , children => Child
+      , children => [Child]
       , name => list_to_binary(observerweb_lib:to_str(get_name(Node, Pid)))
       , monitors => lists:map(
           fun({T,P}) ->
@@ -85,7 +85,7 @@ structure_pid(Node, {Pid, Name}) ->
           end, get_monitors(Node, Pid))
       };
     _ ->
-      Child
+      [Child]
   end;
 
 structure_pid(_Node, {_, undefined, _, _}) -> [];
@@ -127,8 +127,8 @@ structure_pid(Node, {_, Pid, worker, _}) ->
   };
 
 structure_pid(_Node, Port) when is_port(Port) ->
-  #{pid => port
+  #{pid => list_to_binary(observerweb_lib:to_str(Port))
   , children => []
-  , name => port
+  , name => list_to_binary(observerweb_lib:to_str(Port))
   , monitors => []
   }.

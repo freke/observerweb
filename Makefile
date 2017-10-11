@@ -3,10 +3,12 @@
 REBAR = ./rebar
 ELM		= ./elm
 ELM_FORMAT	= ./elm-format
+ELM_INSTALL = ./elm-install
 
 all: elm erlang
 
 elm:
+	@$(ELM_INSTALL)
 	@$(ELM_FORMAT) apps/observerweb/elm --yes
 	@$(ELM) make --warn apps/observerweb/elm/Main.elm --output=apps/observerweb/priv/js/observerweb.js
 
