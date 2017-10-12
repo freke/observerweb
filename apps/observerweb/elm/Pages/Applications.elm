@@ -1,5 +1,6 @@
 module Pages.Applications exposing (..)
 
+import AnimationFrame
 import Dict
 import Graph exposing (Edge, Graph, Node, NodeId)
 import Html exposing (Html)
@@ -22,12 +23,12 @@ import Visualization.Force as Force exposing (State)
 
 screenWidth : Float
 screenWidth =
-    4000
+    2000
 
 
 screenHeight : Float
 screenHeight =
-    2000
+    1000
 
 
 type alias CustomNode =
@@ -40,6 +41,7 @@ type alias Entity =
 
 type alias Model =
     { app_graph_data : Maybe (Graph String String)
+    , simulation : Maybe (Force.State NodeId)
     , app : Maybe String
     , apps : Maybe Apps
     , mdl : Material.Model
@@ -52,6 +54,7 @@ type Msg
     | NewAppInfo (Result Http.Error AppInfo)
     | Mdl (Material.Msg Msg)
     | Tick Time
+    | TickAnimation Time
 
 
 init : Model
@@ -60,6 +63,7 @@ init =
     , app = Nothing
     , apps = Nothing
     , mdl = Material.model
+    , simulation = Nothing
     }
 
 
@@ -120,6 +124,9 @@ update action model =
 
         Tick _ ->
             ( model, fetchdata model.app )
+
+        TickAnimation t ->
+            ( model, Cmd.none )
 
 
 linkElement : Graph Entity String -> Edge String -> Svg msg
@@ -216,7 +223,7 @@ force_graph model =
 
         forces =
             [ Force.customLinks 1 links
-            , Force.manyBodyStrength -70 <| List.map .id <| Graph.nodes graph
+            , Force.manyBodyStrength -30 <| List.map .id <| Graph.nodes graph
             , Force.center (screenWidth / 2) (screenHeight / 2)
             ]
     in
@@ -300,9 +307,25 @@ view model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
+    let
+        done =
+            case model.simulation of
+                Just simulation ->
+                    Force.isCompleted simulation
+
+                Nothing ->
+                    True
+
+        animation =
+            if done then
+                Sub.none
+            else
+                AnimationFrame.times TickAnimation
+    in
     Sub.batch
         [ Time.every (15 * second) Tick
         , Material.subscriptions Mdl model
+        , animation
         ]
 
 
@@ -336,16 +359,25 @@ subscriptions model =
 
 appGraph app_info =
     let
-        edges app_info =
+        nodes =
+            appInfoToNodes app_info
+
+        edges =
             appInfoToEdges app_info
 
-        get_ids_nodes nodes =
+        get_ids_nodes =
             pidToId nodes Dict.empty
 
-        make_nodes =
-            List.map (\( id, pid, name ) -> Node id name)
+        pid_to_id pid id_map =
+            Maybe.withDefault -1 (Dict.get pid id_map)
+
+        make_nodes id_map =
+            List.map (\( pid, name ) -> Node (pid_to_id pid id_map) name)
+
+        make_edges id_map =
+            List.map (\( from_pid, to_pid, lable ) -> Edge (pid_to_id from_pid id_map) (pid_to_id to_pid id_map) lable)
     in
-    Graph.fromNodesAndEdges (app_info |> appInfoToNodes |> get_ids_nodes |> make_nodes) [ Edge 0 1 "link" ]
+    Graph.fromNodesAndEdges (make_nodes get_ids_nodes nodes) (make_edges get_ids_nodes edges)
 
 
 appInfoToNodes : ProcessInfoApp -> List ( String, String )
@@ -358,14 +390,9 @@ linkToParent parent children =
     List.map (\child -> ( parent, child.pid, "link" )) (AppsData.unwrapChildren children)
 
 
-appInfoToEdges : List ProcessInfoApp -> List ( String, String, String )
-appInfoToEdges apps =
-    case apps of
-        [] ->
-            []
-
-        app :: apps ->
-            linkToParent app.pid app.children ++ appInfoToEdges (AppsData.unwrapChildren app.children ++ apps)
+appInfoToEdges : ProcessInfoApp -> List ( String, String, String )
+appInfoToEdges app =
+    linkToParent app.pid app.children ++ List.concatMap (\c -> appInfoToEdges c) (AppsData.unwrapChildren app.children)
 
 
 getIdFromPid pid ids =
@@ -380,7 +407,7 @@ getIdFromPid pid ids =
 pidToId nodes ids =
     case nodes of
         [] ->
-            []
+            ids
 
         ( pid, name ) :: rest ->
-            ( getIdFromPid pid ids, pid, name ) :: pidToId rest (Dict.insert pid (getIdFromPid pid ids) ids)
+            pidToId rest (Dict.insert pid (getIdFromPid pid ids) ids)
