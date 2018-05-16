@@ -1,19 +1,26 @@
 module Pages.Applications exposing (..)
 
+--
+-- {-| This demonstrates laying out the characters in Les Miserables
+-- based on their co-occurence in a scene. Try dragging the nodes!
+-- -}
+--
+
 import AnimationFrame
 import Dict
-import Graph exposing (Edge, Graph, Node, NodeId)
+import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
 import Html exposing (Html)
+import Html.Events exposing (on)
 import Http
-import IntDict
 import Json.AppsData as AppsData exposing (AppInfo, Apps, Children, ProcessInfoApp, getAppInfo, getApps)
-import List exposing (range)
+import Json.Decode as Decode
 import Material
 import Material.Button as Button
 import Material.Card as Card
 import Material.Elevation as Elevation
 import Material.Grid as Grid
 import Material.Options as Options exposing (css)
+import Mouse exposing (Position)
 import Svg exposing (..)
 import Svg.Attributes as Attr exposing (..)
 import Time exposing (Time, second)
@@ -21,50 +28,81 @@ import Views.Page
 import Visualization.Force as Force exposing (State)
 
 
-screenWidth : Float
-screenWidth =
-    2000
-
-
-screenHeight : Float
-screenHeight =
-    1000
-
-
-type alias CustomNode =
-    { rank : Int, name : String }
-
-
-type alias Entity =
-    Force.Entity NodeId { value : CustomNode }
-
-
-type alias Model =
-    { app_graph_data : Maybe (Graph String String)
-    , simulation : Maybe (Force.State NodeId)
-    , app : Maybe String
-    , apps : Maybe Apps
-    , mdl : Material.Model
-    }
-
-
-type Msg
-    = ChangeAppClickMsg String
-    | NewApps (Result Http.Error Apps)
-    | NewAppInfo (Result Http.Error AppInfo)
-    | Mdl (Material.Msg Msg)
-    | Tick Time
-    | TickAnimation Time
-
-
-init : Model
-init =
-    { app_graph_data = Nothing
-    , app = Nothing
-    , apps = Nothing
-    , mdl = Material.model
-    , simulation = Nothing
-    }
+--
+--
+-- module Pages.Applications exposing (..)
+--
+-- import AnimationFrame
+-- import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
+-- import Html
+-- import Html.Events exposing (on)
+-- import Json.Decode as Decode
+-- import Mouse exposing (Position)
+-- import Svg exposing (..)
+-- import Svg.Attributes as Attr exposing (..)
+-- import Time exposing (Time)
+-- import Visualization.Force as Force exposing (State)
+--
+-- screenWidth : Float
+-- screenWidth =
+--     990
+--
+--
+-- screenHeight : Float
+-- screenHeight =
+--     504
+--
+--
+-- type Msg
+--     = DragStart NodeId Position
+--     | DragAt Position
+--     | DragEnd Position
+--     | NewApps (Result Http.Error Apps)
+--     | NewAppInfo (Result Http.Error AppInfo)
+--     | ChangeAppClickMsg String
+--     | Mdl (Material.Msg Msg)
+--     | Tick Time
+--
+--
+-- type alias Model =
+--     { drag : Maybe Drag
+--     , graph : Graph Entity String
+--     , simulation : Force.State NodeId
+--     , app : Maybe String
+--     , apps : Maybe Apps
+--     , mdl : Material.Model
+--     }
+--
+--
+-- type alias Drag =
+--     { start : Position
+--     , current : Position
+--     , index : NodeId
+--     }
+--
+--
+-- type alias Entity =
+--     Force.Entity NodeId { value : String }
+--
+--
+-- init : Model
+-- init =
+--     let
+--         graph =
+--             Graph.empty
+--
+--         link { from, to } =
+--             ( from, to )
+--
+--         forces =
+--             [ Force.links <| List.map link <| Graph.edges graph
+--             , Force.manyBody <| List.map .id <| Graph.nodes graph
+--             , Force.center (screenWidth / 2) (screenHeight / 2)
+--             ]
+--     in
+--     Model Nothing graph (Force.simulation forces) Nothing Nothing Material.model
+--
+--
 
 
 fetchdata : Maybe String -> Cmd Msg
@@ -84,28 +122,81 @@ fetchdata app =
     Cmd.batch [ get_app_info_cmd, get_apps_cmd ]
 
 
-updateGraphWithList : Graph Entity String -> List Entity -> Graph Entity String
-updateGraphWithList =
-    let
-        graphUpdater value =
-            Maybe.map (\ctx -> updateContextWithValue ctx value)
-    in
-    List.foldr (\node graph -> Graph.update node.id (graphUpdater node) graph)
 
-
-updateContextWithValue nodeCtx value =
-    let
-        node =
-            nodeCtx.node
-    in
-    { nodeCtx | node = { node | label = value } }
+--
+--
+-- updateNode : Position -> NodeContext Entity String -> NodeContext Entity String
+-- updateNode pos nodeCtx =
+--     let
+--         nodeValue =
+--             nodeCtx.node.label
+--     in
+--     updateContextWithValue nodeCtx { nodeValue | x = toFloat pos.x, y = toFloat pos.y }
+--
+--
+-- updateContextWithValue : NodeContext Entity String -> Entity -> NodeContext Entity String
+-- updateContextWithValue nodeCtx value =
+--     let
+--         node =
+--             nodeCtx.node
+--     in
+--     { nodeCtx | node = { node | label = value } }
+--
+--
+-- updateGraphWithList : Graph Entity String -> List Entity -> Graph Entity String
+-- updateGraphWithList =
+--     let
+--         graphUpdater value =
+--             Maybe.map (\ctx -> updateContextWithValue ctx value)
+--     in
+--     List.foldr (\node graph -> Graph.update node.id (graphUpdater node) graph)
+--
+--
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update action model =
-    case action of
-        ChangeAppClickMsg app ->
-            ( { model | app = Just app }, fetchdata (Just app) )
+update msg model =
+    case msg of
+        TickAnimation t ->
+            let
+                ( newState, list ) =
+                    Force.tick model.simulation <| List.map .label <| Graph.nodes model.graph
+
+                newModel =
+                    { model
+                        | graph = updateGraphWithList model.graph list
+                        , simulation = newState
+                    }
+            in
+            ( newModel, Cmd.none )
+
+        DragStart index xy_a xy ->
+            ( { model | drag = Just (Drag xy xy index) }, Cmd.none )
+
+        DragAt xy ->
+            case model.drag of
+                Just { start, index } ->
+                    ( { model
+                        | drag = Just (Drag start xy index)
+                        , graph = Graph.update index (Maybe.map (updateNode xy)) model.graph
+                        , simulation = Force.reheat model.simulation
+                      }
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        DragEnd xy ->
+            case model.drag of
+                Just { start, index } ->
+                    ( { model | drag = Nothing, graph = Graph.update index (Maybe.map (updateNode xy)) model.graph }, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        Mdl msg_ ->
+            Material.update Mdl msg_ model
 
         NewApps (Ok apps) ->
             ( { model | apps = Just apps }, Cmd.none )
@@ -114,120 +205,101 @@ update action model =
             ( model, Cmd.none )
 
         NewAppInfo (Ok app_info) ->
-            ( { model | app_graph_data = Just (appGraph app_info.app) }, Cmd.none )
+            let
+                graph =
+                    Graph.mapContexts
+                        (\({ node } as ctx) ->
+                            { ctx | node = { label = Force.entity node.id node.label, id = node.id } }
+                        )
+                        (appGraph app_info.app)
+
+                links =
+                    graph
+                        |> Graph.edges
+                        |> List.filterMap
+                            (\{ from, to, label } ->
+                                Just { source = from, target = to, distance = 100, strength = Just 2 }
+                            )
+
+                forces =
+                    [ Force.customLinks 1 links
+                    , Force.manyBodyStrength -10 <| List.map .id <| Graph.nodes graph
+                    , Force.center (screenWidth / 2) (screenHeight / 2)
+                    ]
+
+                newModel =
+                    { model
+                        | graph = graph
+                        , simulation = Force.simulation forces
+                    }
+            in
+            ( newModel, Cmd.none )
 
         NewApps (Err _) ->
             ( model, Cmd.none )
 
-        Mdl msg_ ->
-            Material.update Mdl msg_ model
+        ChangeAppClickMsg app ->
+            ( { model | app = Just app }, fetchdata (Just app) )
 
         Tick _ ->
             ( model, fetchdata model.app )
 
-        TickAnimation t ->
-            ( model, Cmd.none )
 
 
-linkElement : Graph Entity String -> Edge String -> Svg msg
-linkElement graph edge =
-    let
-        retrieveEntity =
-            Maybe.withDefault (Force.entity 0 (CustomNode 0 "")) << Maybe.map (.node >> .label)
-
-        source =
-            retrieveEntity <| Graph.get edge.from graph
-
-        target =
-            retrieveEntity <| Graph.get edge.to graph
-
-        color =
-            if edge.label == "link" then
-                "#000000"
-            else
-                "#0044ff"
-    in
-    line
-        [ strokeWidth "1"
-        , stroke color
-        , x1 (toString source.x)
-        , y1 (toString source.y)
-        , x2 (toString target.x)
-        , y2 (toString target.y)
-        ]
-        []
-
-
-nodeSize node =
-    g [ transform "translate(-40,-20)" ]
-        [ rect
-            [ x (toString node.x)
-            , y (toString node.y)
-            , stroke "black"
-            , fill "white"
-            , strokeWidth "1px"
-            , width "150px"
-            , height "40px"
-            , rx "5"
-            , ry "5"
-            ]
-            []
-        , text_
-            [ x (toString (node.x + 10))
-            , y (toString (node.y + 18))
-            ]
-            [ text node.value.name
-            , Svg.title [] [ text node.value.name ]
-            ]
-        , text_
-            [ x (toString (node.x + 10))
-            , y (toString (node.y + 30))
-            , fontSize "10"
-            ]
-            [ text "TEST"
-            , Svg.title [] [ text "TEST" ]
-            ]
-        ]
-
-
-nodeElement node =
-    nodeSize node.label
-
-
-force_graph : Graph String String -> Graph Entity String
-force_graph model =
-    let
-        str label =
-            if label == "link" then
-                Just 2
-            else
-                Nothing
-
-        graph =
-            Graph.mapContexts
-                (\({ node, incoming, outgoing } as ctx) ->
-                    { ctx | node = { label = Force.entity node.id (CustomNode (IntDict.size incoming + IntDict.size outgoing) node.label), id = node.id } }
-                )
-                model
-
-        links =
-            graph
-                |> Graph.edges
-                |> List.filterMap
-                    (\{ from, to, label } ->
-                        if label == "link" then
-                            Just { source = from, target = to, distance = 160, strength = Just 2 }
-                        else
-                            Nothing
-                    )
-
-        forces =
-            [ Force.customLinks 1 links
-            , Force.manyBodyStrength -30 <| List.map .id <| Graph.nodes graph
-            , Force.center (screenWidth / 2) (screenHeight / 2)
-            ]
-    in
-    updateGraphWithList graph (Force.computeSimulation (Force.simulation forces) <| List.map .label <| Graph.nodes graph)
+--
+--
+-- subscriptions : Model -> Sub Msg
+-- subscriptions model =
+--     case model.drag of
+--         Nothing ->
+--             -- This allows us to save resources, as if the simulation is done, there is no point in subscribing
+--             -- to the rAF.
+--             if Force.isCompleted model.simulation then
+--                 Sub.none
+--             else
+--                 AnimationFrame.times Tick
+--
+--         Just _ ->
+--             Sub.batch [ Mouse.moves DragAt, Mouse.ups DragEnd, AnimationFrame.times Tick ]
+--
+--
+-- onMouseDown : NodeId -> Attribute Msg
+-- onMouseDown index =
+--     on "mousedown" (Decode.map (DragStart index) Mouse.position)
+--
+--
+-- linkElement graph edge =
+--     let
+--         source =
+--             Maybe.withDefault (Force.entity 0 "") <| Maybe.map (.node >> .label) <| Graph.get edge.from graph
+--
+--         target =
+--             Maybe.withDefault (Force.entity 0 "") <| Maybe.map (.node >> .label) <| Graph.get edge.to graph
+--     in
+--     line
+--         [ strokeWidth "1"
+--         , stroke "#aaa"
+--         , x1 (toString source.x)
+--         , y1 (toString source.y)
+--         , x2 (toString target.x)
+--         , y2 (toString target.y)
+--         ]
+--         []
+--
+--
+-- nodeElement node =
+--     circle
+--         [ r "2.5"
+--         , fill "#000"
+--         , stroke "transparent"
+--         , strokeWidth "7px"
+--         , onMouseDown node.id
+--         , cx (toString node.label.x)
+--         , cy (toString node.label.y)
+--         ]
+--         [ Svg.title [] [ text node.label.value ] ]
+--
+--
 
 
 view_apps : Model -> List (Grid.Cell Msg)
@@ -274,28 +346,15 @@ view_apps model =
 view : Model -> Html Msg
 view model =
     let
-        graph =
-            case model.app_graph_data of
-                Just data ->
-                    Just <| force_graph data
-
-                Nothing ->
-                    Nothing
-
         app_graph =
-            case graph of
-                Just graph ->
-                    [ Card.text []
-                        [ svg
-                            [ viewBox ("0 0 " ++ toString screenWidth ++ " " ++ toString screenHeight) ]
-                            [ g [ class "links" ] <| List.map (linkElement graph) <| Graph.edges graph
-                            , g [ class "nodes" ] <| List.map nodeElement <| Graph.nodes graph
-                            ]
-                        ]
+            [ Card.text []
+                [ svg
+                    [ viewBox ("0 0 " ++ toString screenWidth ++ " " ++ toString screenHeight) ]
+                    [ g [ class "links" ] <| List.map (linkElement model.graph) <| Graph.edges model.graph
+                    , g [ class "nodes" ] <| List.map nodeElement <| Graph.nodes model.graph
                     ]
-
-                Nothing ->
-                    []
+                ]
+            ]
     in
     Card.view [ Elevation.e2, css "margin" "auto", css "width" "100%" ]
         (app_graph
@@ -305,56 +364,37 @@ view model =
         |> Views.Page.body
 
 
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    let
-        done =
-            case model.simulation of
-                Just simulation ->
-                    Force.isCompleted simulation
+pidToId nodes ids =
+    case nodes of
+        [] ->
+            ids
 
-                Nothing ->
-                    True
-
-        animation =
-            if done then
-                Sub.none
-            else
-                AnimationFrame.times TickAnimation
-    in
-    Sub.batch
-        [ Time.every (15 * second) Tick
-        , Material.subscriptions Mdl model
-        , animation
-        ]
+        ( pid, name ) :: rest ->
+            pidToId rest (Dict.insert pid (getIdFromPid pid ids) ids)
 
 
+getIdFromPid pid ids =
+    case Dict.get pid ids of
+        Just i ->
+            i
 
--- appGraph : Graph String String
--- appGraph =
---     Graph.fromNodesAndEdges
---         [ Node 0 "init"
---         , Node 1 "<0.1.0>"
---         , Node 2 "<0.2.0>"
---         , Node 3 "main_sup"
---         , Node 4 "app"
---         , Node 5 "sup"
---         , Node 6 "w1"
---         , Node 7 "w2"
---         , Node 8 "w3"
---         ]
---         [ Edge 0 1 "link"
---         , Edge 1 2 "link"
---         , Edge 2 3 "link"
---         , Edge 3 4 "link"
---         , Edge 3 5 "link"
---         , Edge 5 6 "link"
---         , Edge 5 7 "link"
---         , Edge 5 8 "link"
---         , Edge 4 6 "monitor"
---         , Edge 4 7 "monitor"
---         , Edge 4 8 "monitor"
---         ]
+        Nothing ->
+            Maybe.withDefault -1 (List.maximum <| Dict.values ids) + 1
+
+
+appInfoToEdges : ProcessInfoApp -> List ( String, String, String )
+appInfoToEdges app =
+    linkToParent app.pid app.children ++ List.concatMap (\c -> appInfoToEdges c) (AppsData.unwrapChildren app.children)
+
+
+appInfoToNodes : ProcessInfoApp -> List ( String, String )
+appInfoToNodes app =
+    ( app.pid, app.name ) :: List.concatMap (\c -> appInfoToNodes c) (AppsData.unwrapChildren app.children)
+
+
+linkToParent : String -> Children -> List ( String, String, String )
+linkToParent parent children =
+    List.map (\child -> ( parent, child.pid, "link" )) (AppsData.unwrapChildren children)
 
 
 appGraph app_info =
@@ -375,39 +415,136 @@ appGraph app_info =
             List.map (\( pid, name ) -> Node (pid_to_id pid id_map) name)
 
         make_edges id_map =
-            List.map (\( from_pid, to_pid, lable ) -> Edge (pid_to_id from_pid id_map) (pid_to_id to_pid id_map) lable)
+            List.map (\( from_pid, to_pid, _ ) -> Edge (pid_to_id from_pid id_map) (pid_to_id to_pid id_map) ())
     in
     Graph.fromNodesAndEdges (make_nodes get_ids_nodes nodes) (make_edges get_ids_nodes edges)
 
 
-appInfoToNodes : ProcessInfoApp -> List ( String, String )
-appInfoToNodes app =
-    ( app.pid, app.name ) :: List.concatMap (\c -> appInfoToNodes c) (AppsData.unwrapChildren app.children)
+screenWidth : Float
+screenWidth =
+    1920
 
 
-linkToParent : String -> Children -> List ( String, String, String )
-linkToParent parent children =
-    List.map (\child -> ( parent, child.pid, "link" )) (AppsData.unwrapChildren children)
+screenHeight : Float
+screenHeight =
+    1080
 
 
-appInfoToEdges : ProcessInfoApp -> List ( String, String, String )
-appInfoToEdges app =
-    linkToParent app.pid app.children ++ List.concatMap (\c -> appInfoToEdges c) (AppsData.unwrapChildren app.children)
+type Msg
+    = Tick Time
+    | TickAnimation Time
+    | DragStart NodeId ( Float, Float ) Position
+    | DragAt Position
+    | DragEnd Position
+    | Mdl (Material.Msg Msg)
+    | ChangeAppClickMsg String
+    | NewApps (Result Http.Error Apps)
+    | NewAppInfo (Result Http.Error AppInfo)
 
 
-getIdFromPid pid ids =
-    case Dict.get pid ids of
-        Just i ->
-            i
+type alias Model =
+    { drag : Maybe Drag
+    , graph : Graph Entity ()
+    , simulation : Force.State NodeId
+    , app : Maybe String
+    , apps : Maybe Apps
+    , mdl : Material.Model
+    }
 
-        Nothing ->
-            Maybe.withDefault -1 (List.maximum <| Dict.values ids) + 1
+
+type alias Drag =
+    { start : Position
+    , current : Position
+    , index : NodeId
+    }
 
 
-pidToId nodes ids =
-    case nodes of
-        [] ->
-            ids
+type alias Entity =
+    Force.Entity NodeId { value : String }
 
-        ( pid, name ) :: rest ->
-            pidToId rest (Dict.insert pid (getIdFromPid pid ids) ids)
+
+init : Model
+init =
+    Model Nothing Graph.empty (Force.simulation []) Nothing Nothing Material.model
+
+
+updateNode : Position -> NodeContext Entity () -> NodeContext Entity ()
+updateNode pos nodeCtx =
+    let
+        nodeValue =
+            nodeCtx.node.label
+    in
+    updateContextWithValue nodeCtx { nodeValue | x = toFloat pos.x, y = toFloat pos.y }
+
+
+updateContextWithValue : NodeContext Entity () -> Entity -> NodeContext Entity ()
+updateContextWithValue nodeCtx value =
+    let
+        node =
+            nodeCtx.node
+    in
+    { nodeCtx | node = { node | label = value } }
+
+
+updateGraphWithList : Graph Entity () -> List Entity -> Graph Entity ()
+updateGraphWithList =
+    let
+        graphUpdater value =
+            Maybe.map (\ctx -> updateContextWithValue ctx value)
+    in
+    List.foldr (\node graph -> Graph.update node.id (graphUpdater node) graph)
+
+
+onMouseDown : NodeId -> ( Float, Float ) -> Attribute Msg
+onMouseDown index pos =
+    on "mousedown" (Decode.map (DragStart index pos) Mouse.position)
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    let
+        animation =
+            if Force.isCompleted model.simulation then
+                Sub.none
+            else
+                AnimationFrame.times TickAnimation
+    in
+    Sub.batch
+        [ Time.every (15 * second) Tick
+        , Material.subscriptions Mdl model
+        , animation
+        , Mouse.moves DragAt
+        , Mouse.ups DragEnd
+        ]
+
+
+linkElement graph edge =
+    let
+        source =
+            Maybe.withDefault (Force.entity 0 "") <| Maybe.map (.node >> .label) <| Graph.get edge.from graph
+
+        target =
+            Maybe.withDefault (Force.entity 0 "") <| Maybe.map (.node >> .label) <| Graph.get edge.to graph
+    in
+    line
+        [ strokeWidth "1"
+        , stroke "#aaa"
+        , x1 (toString source.x)
+        , y1 (toString source.y)
+        , x2 (toString target.x)
+        , y2 (toString target.y)
+        ]
+        []
+
+
+nodeElement node =
+    circle
+        [ r "2.5"
+        , fill "#000"
+        , stroke "transparent"
+        , strokeWidth "7px"
+        , onMouseDown node.id ( node.label.x, node.label.y )
+        , cx (toString node.label.x)
+        , cy (toString node.label.y)
+        ]
+        [ Svg.title [] [ text node.label.value ] ]
