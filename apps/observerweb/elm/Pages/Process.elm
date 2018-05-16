@@ -31,7 +31,7 @@ type alias Model =
 
 init : String -> Model
 init id =
-    { id = id
+    { id = Maybe.withDefault "" (Http.decodeUri id)
     , process = Nothing
     , mdl = Material.model
     }
@@ -67,7 +67,7 @@ updateProcesses : Processes -> Model -> Model
 updateProcesses processes model =
     let
         process =
-            List.head (List.filter (\i -> i.registered_name == model.id || i.pid == model.id) processes.processes)
+            List.head (List.filter (\i -> i.registered_name == Debug.log "model.id" model.id || i.pid == model.id) processes.processes)
     in
     { model | process = process }
 
