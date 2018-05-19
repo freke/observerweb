@@ -1,108 +1,313 @@
-module Pages.Applications exposing (..)
+port module Pages.Applications exposing (..)
 
 --
--- {-| This demonstrates laying out the characters in Les Miserables
--- based on their co-occurence in a scene. Try dragging the nodes!
--- -}
+-- TODO: Test this https://github.com/erkal/elm-dagre
 --
 
-import AnimationFrame
-import Dict
+import Dict exposing (Dict)
 import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
-import Html exposing (Html)
-import Html.Events exposing (on)
+import Html exposing (Html, div, program)
 import Http
 import Json.AppsData as AppsData exposing (AppInfo, Apps, Children, ProcessInfoApp, getAppInfo, getApps)
-import Json.Decode as Decode
 import Material
 import Material.Button as Button
 import Material.Card as Card
 import Material.Elevation as Elevation
 import Material.Grid as Grid
 import Material.Options as Options exposing (css)
-import Mouse exposing (Position)
-import Svg exposing (..)
-import Svg.Attributes as Attr exposing (..)
-import Time exposing (Time, second)
+import Svg exposing (Svg, circle, line, path, rect, svg)
+import Svg.Attributes exposing (class, cx, cy, d, fill, fontSize, height, id, opacity, preserveAspectRatio, r, rx, ry, stroke, strokeDasharray, strokeLinejoin, strokeWidth, textAnchor, transform, viewBox, width, x, x1, x2, y, y1, y2)
 import Views.Page
-import Visualization.Force as Force exposing (State)
 
 
---
---
--- module Pages.Applications exposing (..)
---
--- import AnimationFrame
--- import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
--- import Html
--- import Html.Events exposing (on)
--- import Json.Decode as Decode
--- import Mouse exposing (Position)
--- import Svg exposing (..)
--- import Svg.Attributes as Attr exposing (..)
--- import Time exposing (Time)
--- import Visualization.Force as Force exposing (State)
---
--- screenWidth : Float
--- screenWidth =
---     990
---
---
--- screenHeight : Float
--- screenHeight =
---     504
---
---
--- type Msg
---     = DragStart NodeId Position
---     | DragAt Position
---     | DragEnd Position
---     | NewApps (Result Http.Error Apps)
---     | NewAppInfo (Result Http.Error AppInfo)
---     | ChangeAppClickMsg String
---     | Mdl (Material.Msg Msg)
---     | Tick Time
---
---
--- type alias Model =
---     { drag : Maybe Drag
---     , graph : Graph Entity String
---     , simulation : Force.State NodeId
---     , app : Maybe String
---     , apps : Maybe Apps
---     , mdl : Material.Model
---     }
---
---
--- type alias Drag =
---     { start : Position
---     , current : Position
---     , index : NodeId
---     }
---
---
--- type alias Entity =
---     Force.Entity NodeId { value : String }
---
---
--- init : Model
--- init =
---     let
---         graph =
---             Graph.empty
---
---         link { from, to } =
---             ( from, to )
---
---         forces =
---             [ Force.links <| List.map link <| Graph.edges graph
---             , Force.manyBody <| List.map .id <| Graph.nodes graph
---             , Force.center (screenWidth / 2) (screenHeight / 2)
---             ]
---     in
---     Model Nothing graph (Force.simulation forces) Nothing Nothing Material.model
---
---
+type alias Model =
+    { vertices :
+        Dict VertexId
+            { name : String
+            , width : Float
+            , height : Float
+            , position : Point
+            }
+    , edges :
+        Dict EdgeName
+            { middlePoint : Point
+            }
+    , apps : Maybe Apps
+    , app : Maybe String
+    , mdl : Material.Model
+    , width : Int
+    , height : Int
+    }
+
+
+type alias VertexName =
+    String
+
+
+type alias VertexId =
+    String
+
+
+type alias EdgeName =
+    ( VertexId, VertexId )
+
+
+type alias Point =
+    ( Float, Float )
+
+
+initialModel : Model
+initialModel =
+    { vertices = Dict.empty
+    , edges = Dict.empty
+    , apps = Nothing
+    , app = Nothing
+    , mdl = Material.model
+    , width = 1080
+    , height = 768
+    }
+
+
+port toDagre : ( VerticesToDagre, EdgesToDagre ) -> Cmd msg
+
+
+type alias VerticesToDagre =
+    List
+        { vertexId : VertexId
+        , vertexName : VertexName
+        , width : Float
+        , height : Float
+        }
+
+
+type alias EdgesToDagre =
+    List
+        { source : VertexId
+        , target : VertexId
+        }
+
+
+textWidth : String -> Float
+textWidth string =
+    toFloat (String.length string * 8 + 14)
+
+
+makeVertexForDagre : ( VertexId, VertexName ) -> { vertexId : VertexId, vertexName : VertexName, width : Float, height : Float }
+makeVertexForDagre ( id, name ) =
+    { vertexId = id
+    , vertexName = name
+    , width = textWidth name
+
+    {- TODO : here, width should be defined as a function of `name`, or maybe it is better to let all the nodes have the same width and abreviate the module name, if necessary. -}
+    , height = 30
+    }
+
+
+
+-- UPDATE
+
+
+port fromDagre : (DataFromDagre -> msg) -> Sub msg
+
+
+type alias DataFromDagre =
+    { vertices :
+        List
+            { vertexId : VertexId
+            , vertexName : VertexName
+            , position : { x : Float, y : Float }
+            }
+    , edges :
+        List
+            { source : VertexId
+            , target : VertexId
+            , middlePoint : { x : Float, y : Float }
+            }
+    , width : Int
+    , height : Int
+    }
+
+
+type Msg
+    = Set DataFromDagre
+    | NewApps (Result Http.Error Apps)
+    | NewAppInfo (Result Http.Error AppInfo)
+    | Mdl (Material.Msg Msg)
+    | ChangeAppClickMsg String
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        NewApps (Ok apps) ->
+            ( { model | apps = Just apps }, Cmd.none )
+
+        NewAppInfo (Err e) ->
+            ( model, Cmd.none )
+
+        NewAppInfo (Ok app_info) ->
+            let
+                graph =
+                    appGraph app_info.app
+
+                links =
+                    graph
+                        |> Graph.edges
+                        |> List.filterMap
+                            (\edge ->
+                                Just { source = toString edge.from, target = toString edge.to }
+                            )
+            in
+            ( model
+            , toDagre
+                ( Graph.nodes graph |> List.map (\n -> ( toString n.id, n.label )) |> List.map makeVertexForDagre
+                , links
+                )
+            )
+
+        NewApps (Err _) ->
+            ( model, Cmd.none )
+
+        Mdl msg_ ->
+            Material.update Mdl msg_ model
+
+        ChangeAppClickMsg app ->
+            ( { model | app = Just app }, fetchdata (Just app) )
+
+        Set dataFromDagre ->
+            { model
+                | vertices =
+                    dataFromDagre.vertices
+                        |> List.foldr
+                            (\v ->
+                                Dict.insert v.vertexId
+                                    { name = v.vertexName
+                                    , width = textWidth v.vertexName
+                                    , height = 30
+                                    , position = v.position |> (\{ x, y } -> ( x, y ))
+                                    }
+                            )
+                            Dict.empty
+                , edges =
+                    dataFromDagre.edges
+                        |> List.foldr
+                            (\e ->
+                                Dict.insert ( e.source, e.target )
+                                    { middlePoint = e.middlePoint |> (\{ x, y } -> ( x, y )) }
+                            )
+                            Dict.empty
+                , width = dataFromDagre.width
+                , height = dataFromDagre.height
+            }
+                ! []
+
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.batch
+        [ Material.subscriptions Mdl model
+        , fromDagre Set
+        ]
+
+
+view : Model -> Html Msg
+view model =
+    Card.view [ Elevation.e2, css "margin" "auto", css "width" "100%", css "max-height" "80vh" ]
+        ([ Card.text [] [ viewGraph model ] ]
+            ++ [ Card.actions [ Card.border ] [ view_apps model |> Grid.grid [] ]
+               ]
+        )
+        |> Views.Page.body
+
+
+viewGraph : Model -> Html Msg
+viewGraph model =
+    Svg.svg [ viewBox ("-10 -10 " ++ toString (model.width + 20) ++ " " ++ toString (model.height + 20)), preserveAspectRatio "xMinYMin meet" ]
+        [ Svg.g [ transform "scale(0.5)" ]
+            [ drawEdges model
+            , drawVertices model
+            ]
+        ]
+
+
+drawEdges : Model -> Html a
+drawEdges model =
+    let
+        es =
+            model.edges
+                |> Dict.map (drawEdge model)
+                |> Dict.values
+    in
+    Svg.g [ id "edges" ] es
+
+
+drawEdge : Model -> EdgeName -> { middlePoint : Point } -> Html a
+drawEdge model ( s, t ) { middlePoint } =
+    case ( Dict.get s model.vertices, Dict.get t model.vertices ) of
+        ( Just v, Just w ) ->
+            let
+                ( vx, vy ) =
+                    v.position
+
+                ( wx, wy ) =
+                    w.position
+
+                ( qx, qy ) =
+                    middlePoint
+            in
+            Svg.g []
+                [ path
+                    [ stroke "black"
+                    , strokeWidth "2"
+                    , fill "transparent"
+                    , d ("M" ++ String.join " " [ toString vx, toString vy ] ++ "Q" ++ String.join " " [ toString qx, toString qy, toString wx, toString wy ])
+                    ]
+                    []
+                ]
+
+        _ ->
+            Debug.crash ""
+
+
+drawVertices : Model -> Html a
+drawVertices model =
+    let
+        drawVertex id { name, width, height, position } =
+            Svg.g
+                [ transform ("translate" ++ toString position) ]
+                [ rect
+                    [ Svg.Attributes.width (toString width)
+                    , Svg.Attributes.height (toString height)
+                    , x (toString (-width / 2))
+                    , y (toString (-height / 2))
+                    , fill "#3f51b5"
+                    , rx "15"
+                    , ry "15"
+                    ]
+                    []
+                , Svg.text_
+                    [ fill "white"
+                    , textAnchor "middle"
+                    , y "6"
+                    ]
+                    [ Svg.text name ]
+                ]
+
+        vs =
+            model.vertices
+                |> Dict.map drawVertex
+                |> Dict.values
+    in
+    Svg.g [ id "vertices" ] vs
+
+
+init : Model
+init =
+    initialModel
 
 
 fetchdata : Maybe String -> Cmd Msg
@@ -120,186 +325,6 @@ fetchdata app =
             Http.send NewApps getApps
     in
     Cmd.batch [ get_app_info_cmd, get_apps_cmd ]
-
-
-
---
---
--- updateNode : Position -> NodeContext Entity String -> NodeContext Entity String
--- updateNode pos nodeCtx =
---     let
---         nodeValue =
---             nodeCtx.node.label
---     in
---     updateContextWithValue nodeCtx { nodeValue | x = toFloat pos.x, y = toFloat pos.y }
---
---
--- updateContextWithValue : NodeContext Entity String -> Entity -> NodeContext Entity String
--- updateContextWithValue nodeCtx value =
---     let
---         node =
---             nodeCtx.node
---     in
---     { nodeCtx | node = { node | label = value } }
---
---
--- updateGraphWithList : Graph Entity String -> List Entity -> Graph Entity String
--- updateGraphWithList =
---     let
---         graphUpdater value =
---             Maybe.map (\ctx -> updateContextWithValue ctx value)
---     in
---     List.foldr (\node graph -> Graph.update node.id (graphUpdater node) graph)
---
---
-
-
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    case msg of
-        TickAnimation t ->
-            let
-                ( newState, list ) =
-                    Force.tick model.simulation <| List.map .label <| Graph.nodes model.graph
-
-                newModel =
-                    { model
-                        | graph = updateGraphWithList model.graph list
-                        , simulation = newState
-                    }
-            in
-            ( newModel, Cmd.none )
-
-        DragStart index xy_a xy ->
-            ( { model | drag = Just (Drag xy xy index) }, Cmd.none )
-
-        DragAt xy ->
-            case model.drag of
-                Just { start, index } ->
-                    ( { model
-                        | drag = Just (Drag start xy index)
-                        , graph = Graph.update index (Maybe.map (updateNode xy)) model.graph
-                        , simulation = Force.reheat model.simulation
-                      }
-                    , Cmd.none
-                    )
-
-                Nothing ->
-                    ( model, Cmd.none )
-
-        DragEnd xy ->
-            case model.drag of
-                Just { start, index } ->
-                    ( { model | drag = Nothing, graph = Graph.update index (Maybe.map (updateNode xy)) model.graph }, Cmd.none )
-
-                Nothing ->
-                    ( model, Cmd.none )
-
-        Mdl msg_ ->
-            Material.update Mdl msg_ model
-
-        NewApps (Ok apps) ->
-            ( { model | apps = Just apps }, Cmd.none )
-
-        NewAppInfo (Err e) ->
-            ( model, Cmd.none )
-
-        NewAppInfo (Ok app_info) ->
-            let
-                graph =
-                    Graph.mapContexts
-                        (\({ node } as ctx) ->
-                            { ctx | node = { label = Force.entity node.id node.label, id = node.id } }
-                        )
-                        (appGraph app_info.app)
-
-                links =
-                    graph
-                        |> Graph.edges
-                        |> List.filterMap
-                            (\{ from, to, label } ->
-                                Just { source = from, target = to, distance = 100, strength = Just 2 }
-                            )
-
-                forces =
-                    [ Force.customLinks 1 links
-                    , Force.manyBodyStrength -10 <| List.map .id <| Graph.nodes graph
-                    , Force.center (screenWidth / 2) (screenHeight / 2)
-                    ]
-
-                newModel =
-                    { model
-                        | graph = graph
-                        , simulation = Force.simulation forces
-                    }
-            in
-            ( newModel, Cmd.none )
-
-        NewApps (Err _) ->
-            ( model, Cmd.none )
-
-        ChangeAppClickMsg app ->
-            ( { model | app = Just app }, fetchdata (Just app) )
-
-        Tick _ ->
-            ( model, fetchdata model.app )
-
-
-
---
---
--- subscriptions : Model -> Sub Msg
--- subscriptions model =
---     case model.drag of
---         Nothing ->
---             -- This allows us to save resources, as if the simulation is done, there is no point in subscribing
---             -- to the rAF.
---             if Force.isCompleted model.simulation then
---                 Sub.none
---             else
---                 AnimationFrame.times Tick
---
---         Just _ ->
---             Sub.batch [ Mouse.moves DragAt, Mouse.ups DragEnd, AnimationFrame.times Tick ]
---
---
--- onMouseDown : NodeId -> Attribute Msg
--- onMouseDown index =
---     on "mousedown" (Decode.map (DragStart index) Mouse.position)
---
---
--- linkElement graph edge =
---     let
---         source =
---             Maybe.withDefault (Force.entity 0 "") <| Maybe.map (.node >> .label) <| Graph.get edge.from graph
---
---         target =
---             Maybe.withDefault (Force.entity 0 "") <| Maybe.map (.node >> .label) <| Graph.get edge.to graph
---     in
---     line
---         [ strokeWidth "1"
---         , stroke "#aaa"
---         , x1 (toString source.x)
---         , y1 (toString source.y)
---         , x2 (toString target.x)
---         , y2 (toString target.y)
---         ]
---         []
---
---
--- nodeElement node =
---     circle
---         [ r "2.5"
---         , fill "#000"
---         , stroke "transparent"
---         , strokeWidth "7px"
---         , onMouseDown node.id
---         , cx (toString node.label.x)
---         , cy (toString node.label.y)
---         ]
---         [ Svg.title [] [ text node.label.value ] ]
---
---
 
 
 view_apps : Model -> List (Grid.Cell Msg)
@@ -333,35 +358,14 @@ view_apps model =
             apps.apps
                 |> List.indexedMap
                     (\index item ->
-                        Grid.cell [ Grid.size Grid.All 2 ]
+                        Grid.cell [ Grid.size Grid.All 3 ]
                             [ Button.render Mdl
                                 [ index ]
                                 model.mdl
                                 (options item.name)
-                                [ text <| item.name ++ " (" ++ item.vsn ++ ")" ]
+                                [ Svg.text <| item.name ++ " (" ++ item.vsn ++ ")" ]
                             ]
                     )
-
-
-view : Model -> Html Msg
-view model =
-    let
-        app_graph =
-            [ Card.text []
-                [ svg
-                    [ viewBox ("0 0 " ++ toString screenWidth ++ " " ++ toString screenHeight) ]
-                    [ g [ class "links" ] <| List.map (linkElement model.graph) <| Graph.edges model.graph
-                    , g [ class "nodes" ] <| List.map nodeElement <| Graph.nodes model.graph
-                    ]
-                ]
-            ]
-    in
-    Card.view [ Elevation.e2, css "margin" "auto", css "width" "100%" ]
-        (app_graph
-            ++ [ Card.actions [ Card.border ] [ view_apps model |> Grid.grid [] ]
-               ]
-        )
-        |> Views.Page.body
 
 
 pidToId nodes ids =
@@ -418,133 +422,3 @@ appGraph app_info =
             List.map (\( from_pid, to_pid, _ ) -> Edge (pid_to_id from_pid id_map) (pid_to_id to_pid id_map) ())
     in
     Graph.fromNodesAndEdges (make_nodes get_ids_nodes nodes) (make_edges get_ids_nodes edges)
-
-
-screenWidth : Float
-screenWidth =
-    1920
-
-
-screenHeight : Float
-screenHeight =
-    1080
-
-
-type Msg
-    = Tick Time
-    | TickAnimation Time
-    | DragStart NodeId ( Float, Float ) Position
-    | DragAt Position
-    | DragEnd Position
-    | Mdl (Material.Msg Msg)
-    | ChangeAppClickMsg String
-    | NewApps (Result Http.Error Apps)
-    | NewAppInfo (Result Http.Error AppInfo)
-
-
-type alias Model =
-    { drag : Maybe Drag
-    , graph : Graph Entity ()
-    , simulation : Force.State NodeId
-    , app : Maybe String
-    , apps : Maybe Apps
-    , mdl : Material.Model
-    }
-
-
-type alias Drag =
-    { start : Position
-    , current : Position
-    , index : NodeId
-    }
-
-
-type alias Entity =
-    Force.Entity NodeId { value : String }
-
-
-init : Model
-init =
-    Model Nothing Graph.empty (Force.simulation []) Nothing Nothing Material.model
-
-
-updateNode : Position -> NodeContext Entity () -> NodeContext Entity ()
-updateNode pos nodeCtx =
-    let
-        nodeValue =
-            nodeCtx.node.label
-    in
-    updateContextWithValue nodeCtx { nodeValue | x = toFloat pos.x, y = toFloat pos.y }
-
-
-updateContextWithValue : NodeContext Entity () -> Entity -> NodeContext Entity ()
-updateContextWithValue nodeCtx value =
-    let
-        node =
-            nodeCtx.node
-    in
-    { nodeCtx | node = { node | label = value } }
-
-
-updateGraphWithList : Graph Entity () -> List Entity -> Graph Entity ()
-updateGraphWithList =
-    let
-        graphUpdater value =
-            Maybe.map (\ctx -> updateContextWithValue ctx value)
-    in
-    List.foldr (\node graph -> Graph.update node.id (graphUpdater node) graph)
-
-
-onMouseDown : NodeId -> ( Float, Float ) -> Attribute Msg
-onMouseDown index pos =
-    on "mousedown" (Decode.map (DragStart index pos) Mouse.position)
-
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    let
-        animation =
-            if Force.isCompleted model.simulation then
-                Sub.none
-            else
-                AnimationFrame.times TickAnimation
-    in
-    Sub.batch
-        [ Time.every (15 * second) Tick
-        , Material.subscriptions Mdl model
-        , animation
-        , Mouse.moves DragAt
-        , Mouse.ups DragEnd
-        ]
-
-
-linkElement graph edge =
-    let
-        source =
-            Maybe.withDefault (Force.entity 0 "") <| Maybe.map (.node >> .label) <| Graph.get edge.from graph
-
-        target =
-            Maybe.withDefault (Force.entity 0 "") <| Maybe.map (.node >> .label) <| Graph.get edge.to graph
-    in
-    line
-        [ strokeWidth "1"
-        , stroke "#aaa"
-        , x1 (toString source.x)
-        , y1 (toString source.y)
-        , x2 (toString target.x)
-        , y2 (toString target.y)
-        ]
-        []
-
-
-nodeElement node =
-    circle
-        [ r "2.5"
-        , fill "#000"
-        , stroke "transparent"
-        , strokeWidth "7px"
-        , onMouseDown node.id ( node.label.x, node.label.y )
-        , cx (toString node.label.x)
-        , cy (toString node.label.y)
-        ]
-        [ Svg.title [] [ text node.label.value ] ]

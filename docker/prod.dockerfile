@@ -7,8 +7,7 @@ WORKDIR /code
 RUN bower --allow-root install
 RUN elm make --yes main.elm --output=/build/observerweb.js
 
-FROM alpine:latest AS erlang_base
-RUN sed -i -e 's/v3\.2/edge/g' /etc/apk/repositories && echo "http://dl-4.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories
+FROM alpine:edge AS erlang_base
 RUN apk update
 RUN apk upgrade --available
 RUN apk add --update-cache musl zlib ncurses-libs libgcc libstdc++
