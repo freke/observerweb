@@ -7,16 +7,20 @@ port module Pages.Applications exposing (..)
 import Dict exposing (Dict)
 import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
 import Html exposing (Html, div, program)
+import Html.Events exposing (on)
 import Http
 import Json.AppsData as AppsData exposing (AppInfo, Apps, Children, ProcessInfoApp, getAppInfo, getApps)
+import Json.Decode as Decode
+import Json.WheelEvent exposing (WheelEvent, wheelEvent)
 import Material
 import Material.Button as Button
 import Material.Card as Card
 import Material.Elevation as Elevation
 import Material.Grid as Grid
 import Material.Options as Options exposing (css)
+import Mouse exposing (Position)
 import Svg exposing (Svg, circle, line, path, rect, svg)
-import Svg.Attributes exposing (class, cx, cy, d, fill, fontSize, height, id, opacity, preserveAspectRatio, r, rx, ry, stroke, strokeDasharray, strokeLinejoin, strokeWidth, textAnchor, transform, viewBox, width, x, x1, x2, y, y1, y2)
+import Svg.Attributes exposing (class, cx, cy, d, fill, fontSize, height, id, opacity, preserveAspectRatio, r, rx, ry, stroke, strokeDasharray, strokeLinejoin, strokeWidth, style, textAnchor, transform, viewBox, width, x, x1, x2, y, y1, y2)
 import Views.Page
 
 
@@ -37,6 +41,15 @@ type alias Model =
     , mdl : Material.Model
     , width : Int
     , height : Int
+    , scale : Float
+    , position : Position
+    , drag : Maybe Drag
+    }
+
+
+type alias Drag =
+    { start : Position
+    , current : Position
     }
 
 
@@ -65,6 +78,9 @@ initialModel =
     , mdl = Material.model
     , width = 1080
     , height = 768
+    , scale = 0.5
+    , position = Position 0 0
+    , drag = Nothing
     }
 
 
@@ -97,8 +113,6 @@ makeVertexForDagre ( id, name ) =
     { vertexId = id
     , vertexName = name
     , width = textWidth name
-
-    {- TODO : here, width should be defined as a function of `name`, or maybe it is better to let all the nodes have the same width and abreviate the module name, if necessary. -}
     , height = 30
     }
 
@@ -134,11 +148,34 @@ type Msg
     | NewAppInfo (Result Http.Error AppInfo)
     | Mdl (Material.Msg Msg)
     | ChangeAppClickMsg String
+    | DragStart Position
+    | DragAt Position
+    | DragEnd Position
+    | Wheel WheelEvent
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        DragStart xy ->
+            ( { model | drag = Just (Drag xy xy) }, Cmd.none )
+
+        DragAt xy ->
+            ( { model | drag = Maybe.map (\{ start } -> Drag start xy) model.drag }, Cmd.none )
+
+        DragEnd _ ->
+            ( { model | position = getPosition model, drag = Nothing }, Cmd.none )
+
+        Wheel wheel ->
+            let
+                scale =
+                    if wheel.deltaY > 0 then
+                        model.scale - (model.scale * 0.1)
+                    else
+                        model.scale + (model.scale * 0.1)
+            in
+            ( { model | scale = scale }, Cmd.none )
+
         NewApps (Ok apps) ->
             ( { model | apps = Just apps }, Cmd.none )
 
@@ -172,7 +209,13 @@ update msg model =
             Material.update Mdl msg_ model
 
         ChangeAppClickMsg app ->
-            ( { model | app = Just app }, fetchdata (Just app) )
+            ( { model
+                | app = Just app
+                , position = Position 0 0
+                , drag = Nothing
+              }
+            , fetchdata (Just app)
+            )
 
         Set dataFromDagre ->
             { model
@@ -208,16 +251,24 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch
-        [ Material.subscriptions Mdl model
-        , fromDagre Set
-        ]
+    let
+        default =
+            [ Material.subscriptions Mdl model
+            , fromDagre Set
+            ]
+    in
+    case model.drag of
+        Nothing ->
+            Sub.batch default
+
+        Just _ ->
+            Sub.batch (default ++ [ Mouse.moves DragAt, Mouse.ups DragEnd ])
 
 
 view : Model -> Html Msg
 view model =
-    Card.view [ Elevation.e2, css "margin" "auto", css "width" "100%", css "max-height" "80vh" ]
-        ([ Card.text [] [ viewGraph model ] ]
+    Card.view [ Elevation.e2, css "margin" "auto", css "width" "100%" ]
+        ([ Card.text [ css "max-height" "60vh", css "user-select" "none" ] [ viewGraph model ] ]
             ++ [ Card.actions [ Card.border ] [ view_apps model |> Grid.grid [] ]
                ]
         )
@@ -226,8 +277,18 @@ view model =
 
 viewGraph : Model -> Html Msg
 viewGraph model =
-    Svg.svg [ viewBox ("-10 -10 " ++ toString (model.width + 20) ++ " " ++ toString (model.height + 20)), preserveAspectRatio "xMinYMin meet" ]
-        [ Svg.g [ transform "scale(0.5)" ]
+    let
+        realPosition =
+            getPosition model
+    in
+    Svg.svg
+        [ onMouseDown
+        , onWheel
+        , style "min-height: 60vh"
+        , viewBox ("-10 -10 " ++ toString (model.width + 20) ++ " " ++ toString (model.height + 20))
+        , preserveAspectRatio "xMinYMin meet"
+        ]
+        [ Svg.g [ transform ("scale(" ++ toString model.scale ++ ") translate(" ++ toString realPosition.x ++ " " ++ toString realPosition.y ++ ")") ]
             [ drawEdges model
             , drawVertices model
             ]
@@ -401,6 +462,7 @@ linkToParent parent children =
     List.map (\child -> ( parent, child.pid, "link" )) (AppsData.unwrapChildren children)
 
 
+appGraph : ProcessInfoApp -> Graph String ()
 appGraph app_info =
     let
         nodes =
@@ -422,3 +484,25 @@ appGraph app_info =
             List.map (\( from_pid, to_pid, _ ) -> Edge (pid_to_id from_pid id_map) (pid_to_id to_pid id_map) ())
     in
     Graph.fromNodesAndEdges (make_nodes get_ids_nodes nodes) (make_edges get_ids_nodes edges)
+
+
+onMouseDown : Html.Attribute Msg
+onMouseDown =
+    on "mousedown" (Decode.map DragStart Mouse.position)
+
+
+onWheel : Html.Attribute Msg
+onWheel =
+    on "wheel" (Decode.map Wheel wheelEvent)
+
+
+getPosition : Model -> Position
+getPosition model =
+    case model.drag of
+        Nothing ->
+            model.position
+
+        Just { start, current } ->
+            Position
+                (model.position.x + truncate (toFloat (current.x - start.x) / model.scale))
+                (model.position.y + truncate (toFloat (current.y - start.y) / model.scale))
