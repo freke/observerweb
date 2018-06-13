@@ -100,7 +100,7 @@ structure_pid(Node, {_, Pid, supervisor, _}) ->
       _ ->
         C = get_children(Node, Pid),
         C1 = C ++ lists:filter(fun is_port/1, Links),
-        lists:map(fun(L) -> structure_pid(Node,L) end, C1)
+        [E || E <- lists:map(fun(L) -> structure_pid(Node,L) end, C1), E /= []]
     end,
 
   #{pid => list_to_binary(observerweb_lib:to_str(Pid))

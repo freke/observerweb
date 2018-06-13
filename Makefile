@@ -8,11 +8,13 @@ ELM_INSTALL = ./elm-install
 all: elm erlang
 
 elm:
+	-docker-compose pull
 	@$(ELM_INSTALL)
 	@$(ELM_FORMAT) apps/observerweb/elm --yes
 	@$(ELM) make --warn apps/observerweb/elm/Main.elm --output=apps/observerweb/priv/js/observerweb.js
 
 erlang:
+	-docker-compose pull
 	@$(REBAR) compile
 
 clean:
