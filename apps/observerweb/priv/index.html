@@ -5,7 +5,7 @@
   <meta http-equiv="x-ua-compatible" content="ie=edge">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
   <!-- here we pull in the webcomponents polyfill -->
-  <script src="js/bower_components/webcomponentsjs/webcomponents.js"></script>
+  <script src="js/bower_components/webcomponentsjs/webcomponents-loader.js"></script>
   <!-- This part took me a while to figure out, found it on a ML thread with
        the help of Richard Feldman ultimately - basically, you need to use
        shadow DOM or else nested webcomponents don't work right in strange but
@@ -47,7 +47,7 @@
     }
     function setEdges(g, edgesFromElm) {
         edgesFromElm.forEach(function(edge) {
-            g.setEdge(edge.source, edge.target);
+            g.setEdge(edge.source, edge.target, {label: edge.label});
         })
     }
     function calculateDAGLayout(nodesFromElm, edgesFromElm) {
@@ -82,7 +82,8 @@
             result.push({
                 source: e.v,
                 target: e.w,
-                middlePoint: g.edge(e).points[1]
+                middlePoint: g.edge(e).points[1],
+                label: g.edge(e).label
             })
         });
         return result
