@@ -17,6 +17,17 @@ erlang:
 	-docker-compose pull
 	@$(REBAR) compile
 
+test: dialyzer eunit
+
+dialyzer:
+	@$(REBAR) dialyzer
+
+eunit:
+	@$(REBAR) eunit
+
+ct:
+	@$(REBAR) ct
+
 clean:
 	rm -Rf apps/observerweb/priv/js/*
 	rm -Rf elm-stuff/build-artifacts
@@ -27,4 +38,5 @@ shell: elm erlang
 
 rel:
 	mkdir -p release
+	#docker build --no-cache -t observerweb -f docker/prod.dockerfile .
 	docker build -t observerweb -f docker/prod.dockerfile .

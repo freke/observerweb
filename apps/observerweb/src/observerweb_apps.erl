@@ -95,7 +95,7 @@ structure_pid(Node, {_, Pid, supervisor, _}) ->
 
   Children =
     case length(Links) of
-      [_] ->
+      0 ->
         [];
       _ ->
         C = get_children(Node, Pid),

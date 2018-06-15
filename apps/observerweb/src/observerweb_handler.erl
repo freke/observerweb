@@ -67,7 +67,7 @@ process(<<"POST">>, true, Req) ->
                     jiffy:encode({[{node,Node},{connected,false}]});
                 pong ->
                     %insert_Data(acc_node, Node),
-                    observerweb_pro:change_node(Node),
+                    %observerweb_pro:change_node(Node),
                     jiffy:encode({[{node,Node},{connected,true}]});
                 false ->
                     jiffy:encode({[{node,Node},{connected,false},{message, <<"Node invalid">>}]})
