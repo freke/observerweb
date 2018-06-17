@@ -4,7 +4,7 @@ COPY apps/observerweb/elm /code
 COPY bower.json /code
 COPY elm-package.json /code
 WORKDIR /code
-RUN bower --allow-root install
+RUN bower --allow-root install -p
 RUN elm make --yes Main.elm --output=/build/observerweb.js
 
 FROM alpine:edge AS erlang_base

@@ -28,6 +28,9 @@ eunit:
 ct:
 	@$(REBAR) ct
 
+update:
+	@$(REBAR) update-deps
+
 clean:
 	-rm -Rf apps/observerweb/priv/js
 	-rm -Rf elm-stuff/build-artifacts
@@ -37,7 +40,5 @@ shell: elm erlang
 	@$(REBAR) shell
 
 rel: clean
-	git clean -dx -f
-	mkdir -p release
 	#docker build --no-cache -t observerweb -f docker/prod.dockerfile .
 	docker build -t observerweb -f docker/prod.dockerfile .
