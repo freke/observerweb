@@ -5,7 +5,7 @@
   <meta http-equiv="x-ua-compatible" content="ie=edge">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
   <!-- here we pull in the webcomponents polyfill -->
-  <script src="js/bower_components/webcomponentsjs/webcomponents.js"></script>
+  <script src="js/bower_components/webcomponentsjs/webcomponents-loader.js"></script>
   <!-- This part took me a while to figure out, found it on a ML thread with
        the help of Richard Feldman ultimately - basically, you need to use
        shadow DOM or else nested webcomponents don't work right in strange but
@@ -23,12 +23,88 @@
 </head>
 <body>
 <div id="main"></div>
+<script src="js/bower_components/lodash/dist/lodash.js"></script>
+<script src="js/bower_components/graphlib/dist/graphlib.core.js"></script>
+<script src="js/bower_components/dagre/dist/dagre.core.js"></script>
 <script src="js/observerweb.js"></script>
 <script>
     var node = document.getElementById('main');
     var app = Elm.Main.embed(node);
     // Note: if your Elm module is named "MyThing.Root" you
     // would call "Elm.MyThing.Root.embed(node)" instead.
+</script>
+
+<script>
+    // -------------- FROM ELM -------------------
+    function setNodes(g, nodesFromElm) {
+        nodesFromElm.forEach(function(node) {
+            g.setNode(node.vertexId, {
+                label: node.vertexName,
+                width: node.width,
+                height: node.height
+            });
+        })
+    }
+    function setEdges(g, edgesFromElm) {
+        edgesFromElm.forEach(function(edge) {
+            g.setEdge(edge.source, edge.target, {label: edge.label});
+        })
+    }
+    function calculateDAGLayout(nodesFromElm, edgesFromElm) {
+        var g = new dagre.graphlib.Graph();
+        g.setGraph({rankdir: 'LR', ranker: 'tight-tree'});
+        g.setDefaultEdgeLabel(function() {
+            return {};
+        });
+        setNodes(g, nodesFromElm)
+        setEdges(g, edgesFromElm)
+        dagre.layout(g);
+        return g
+    }
+    // -------------- TO ELM -------------------
+    function getVerticesForElm(g) {
+        result = []
+        g.nodes().forEach(function(v) {
+            result.push({
+                vertexId: v,
+                vertexName: g.node(v).label,
+                position: {
+                    x: g.node(v).x,
+                    y: g.node(v).y
+                }
+            })
+        });
+        return result
+    }
+    function getEdgesForElm(g) {
+        result = []
+        g.edges().forEach(function(e) {
+            result.push({
+                source: e.v,
+                target: e.w,
+                middlePoint: g.edge(e).points[1],
+                label: g.edge(e).label
+            })
+        });
+        return result
+    }
+    // var g = calculateDAGLayout(nodesFromElmExample, edgesFromElmExample)
+    // console.log("Vertices for elm:")
+    // console.log(getVerticesForElm(g))
+    // console.log("Edges for elm:")
+    // console.log(getEdgesForElm(g))
+    // console.log("g:")
+    // console.log(g)
+    app.ports.toDagre
+        .subscribe(([vertices, edges]) => {
+            var g = calculateDAGLayout(vertices, edges)
+            app.ports.fromDagre
+                .send({ vertices: getVerticesForElm(g)
+                      , edges: getEdgesForElm(g)
+                      , width: g.graph().width
+                      , height: g.graph().height
+                })
+        })
 </script>
 </body>
 </html>

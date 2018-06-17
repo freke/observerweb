@@ -12,6 +12,7 @@
     "tests"
   ],
   "dependencies": {
-    "google-chart": "^1.1.2"
+    "google-chart": "*",
+    "dagre": "*"
   }
 }

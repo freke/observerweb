@@ -33,3 +33,5 @@ Open http://127.0.0.1:8080 in your browser
 ## License
 
     The MIT License (MIT)
+
+Checkout http://package.elm-lang.org/packages/terezka/elm-plot/5.1.0/

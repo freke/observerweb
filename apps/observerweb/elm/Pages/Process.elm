@@ -31,7 +31,7 @@ type alias Model =
 
 init : String -> Model
 init id =
-    { id = id
+    { id = Maybe.withDefault "" (Http.decodeUri id)
     , process = Nothing
     , mdl = Material.model
     }
