@@ -134,9 +134,19 @@ header model =
             ]
         , Layout.navigation []
             [ Layout.link
+                -- [ Layout.href "https://github.com/freke/observerweb" ]
+                -- [ Options.styled Html.img
+                --     [ Options.attribute <| src "https://s3.amazonaws.com/github/ribbons/forkme_right_gray_6d6d6d.png"
+                --     , Options.attribute <| alt "Fork me on GitHub"
+                --     , css "position" "absolute"
+                --     , css "top" "0"
+                --     , css "right" "0"
+                --     , css "border" "0"
+                --     ]
+                --     []
                 [ Layout.href "https://github.com/freke/observerweb" ]
                 [ Options.styled Html.img
-                    [ Options.attribute <| src "img/github.svg"
+                    [ Options.attribute <| src "img/github_w.svg"
                     , Options.attribute <| alt "github"
                     , css "width" "24px"
                     , css "height" "24px"
