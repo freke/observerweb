@@ -11,7 +11,7 @@ Currently supported:
 
 ## TODO
 
-- [ ] Applications
+- [x] Applications
 - [x] Processes
 - [x] Process info
 - [x] Port info
@@ -23,9 +23,13 @@ Build and relese.
 ```bash
 make rel
 ```
-To start the release in the foreground.
+To start the release with a shell.
 ```bash
-./_build/default/rel/observerweb/bin/observerweb console
+docker run -it --rm -p 8080:8080 observerweb console
+```
+To start the release without a shell.
+```bash
+docker run -d --rm -p 8080:8080 observerweb foreground
 ```
 Open http://127.0.0.1:8080 in your browser
 

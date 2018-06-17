@@ -31,6 +31,8 @@ RUN ./bootstrap
 RUN ln -s /opt/rebar3/rebar3 /bin/rebar3
 COPY apps/observerweb /src/observerweb
 COPY rebar.config /src/observerweb/rebar.config
+COPY --from=elm_build /build/observerweb.js /src/observerweb/apps/priv/js
+COPY --from=elm_build /code/bower_components /src/observerweb/priv/js/bower_components
 WORKDIR /src/observerweb
 RUN rebar3 compile
 
@@ -49,5 +51,5 @@ RUN apk add --update-cache ncurses-dev
 RUN rm -rf /var/cache/apk/*
 RUN echo -en '\n' > ~/.hosts.erlang
 COPY --from=build_release /src/observerweb/_build/prod/ /
-ENTRYPOINT /rel/observerweb/bin/observerweb foreground
+ENTRYPOINT ["/rel/observerweb/bin/observerweb"]
 EXPOSE 8080
