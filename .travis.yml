@@ -1,0 +1,12 @@
+sudo: required
+
+language: ruby
+
+services:
+  - docker
+
+script:
+  - docker-compose build
+  - docker-compose run observerweb_elm bower --allow-root install
+  - docker-compose run observerweb_elm elm make --warn apps/observerweb/elm/Main.elm --output=apps/observerweb/priv/js/observerweb.js
+  - docker-compose -f docker-compose.yml run --rm --service-ports observerweb_erlang rebar3 compile
