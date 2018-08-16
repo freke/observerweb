@@ -1,4 +1,4 @@
-Observer Web
+Observer Web [![Build Status](https://travis-ci.org/freke/observerweb.svg?branch=master)](https://travis-ci.org/freke/observerweb)
 ============
 Observer Web is erlang observer web frontend, base code borrowed from observer gui.
 
