@@ -47,7 +47,7 @@
     }
     function setEdges(g, edgesFromElm) {
         edgesFromElm.forEach(function(edge) {
-            g.setEdge(edge.source, edge.target, {label: edge.label});
+            g.setEdge(edge.source, edge.target);
         })
     }
     function calculateDAGLayout(nodesFromElm, edgesFromElm) {
@@ -82,8 +82,7 @@
             result.push({
                 source: e.v,
                 target: e.w,
-                middlePoint: g.edge(e).points[1],
-                label: g.edge(e).label
+                middlePoint: g.edge(e).points[1]
             })
         });
         return result

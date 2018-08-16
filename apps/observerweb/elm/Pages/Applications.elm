@@ -35,7 +35,6 @@ type alias Model =
     , edges :
         Dict EdgeName
             { middlePoint : Point
-            , label : String
             }
     , apps : Maybe Apps
     , app : Maybe String
@@ -101,7 +100,6 @@ type alias EdgesToDagre =
     List
         { source : VertexId
         , target : VertexId
-        , label : String
         }
 
 
@@ -121,6 +119,7 @@ makeVertexForDagre ( id, name ) =
 
 
 -- UPDATE
+-- UPDATE
 
 
 port fromDagre : (DataFromDagre -> msg) -> Sub msg
@@ -138,7 +137,6 @@ type alias DataFromDagre =
             { source : VertexId
             , target : VertexId
             , middlePoint : { x : Float, y : Float }
-            , label : String
             }
     , width : Int
     , height : Int
@@ -195,7 +193,7 @@ update msg model =
                         |> Graph.edges
                         |> List.filterMap
                             (\edge ->
-                                Just { source = toString edge.from, target = toString edge.to, label = edge.label }
+                                Just { source = toString edge.from, target = toString edge.to }
                             )
             in
             ( model
@@ -239,7 +237,7 @@ update msg model =
                         |> List.foldr
                             (\e ->
                                 Dict.insert ( e.source, e.target )
-                                    { middlePoint = e.middlePoint |> (\{ x, y } -> ( x, y )), label = e.label }
+                                    { middlePoint = e.middlePoint |> (\{ x, y } -> ( x, y )) }
                             )
                             Dict.empty
                 , width = dataFromDagre.width
@@ -309,8 +307,8 @@ drawEdges model =
     Svg.g [ id "edges" ] es
 
 
-drawEdge : Model -> EdgeName -> { middlePoint : Point, label : String } -> Html a
-drawEdge model ( s, t ) { middlePoint, label } =
+drawEdge : Model -> EdgeName -> { middlePoint : Point } -> Html a
+drawEdge model ( s, t ) { middlePoint } =
     case ( Dict.get s model.vertices, Dict.get t model.vertices ) of
         ( Just v, Just w ) ->
             let
@@ -322,21 +320,10 @@ drawEdge model ( s, t ) { middlePoint, label } =
 
                 ( qx, qy ) =
                     middlePoint
-
-                c =
-                    case label of
-                        "link" ->
-                            "black"
-
-                        "monitor" ->
-                            "LightBlue"
-
-                        e ->
-                            Debug.crash "Unkown link type" e
             in
             Svg.g []
                 [ path
-                    [ stroke c
+                    [ stroke "black"
                     , strokeWidth "2"
                     , fill "transparent"
                     , d ("M" ++ String.join " " [ toString vx, toString vy ] ++ "Q" ++ String.join " " [ toString qx, toString qy, toString wx, toString wy ])
@@ -465,12 +452,12 @@ getIdFromPid pid ids =
 
 appInfoToEdges : ProcessInfoApp -> List ( String, String, String )
 appInfoToEdges app =
-    linkToParent app.pid app.children ++ List.concatMap (\c -> appInfoToEdges c) (AppsData.unwrapChildren app.children) ++ List.map (\m -> ( app.pid, m.pid, "monitor" )) app.monitors
+    linkToParent app.pid app.children ++ List.concatMap (\c -> appInfoToEdges c) (AppsData.unwrapChildren app.children)
 
 
 appInfoToNodes : ProcessInfoApp -> List ( String, String )
 appInfoToNodes app =
-    ( app.pid, app.name ) :: List.concatMap (\c -> appInfoToNodes c) (AppsData.unwrapChildren app.children) ++ List.map (\m -> ( m.pid, m.pid )) app.monitors
+    ( app.pid, app.name ) :: List.concatMap (\c -> appInfoToNodes c) (AppsData.unwrapChildren app.children)
 
 
 linkToParent : String -> Children -> List ( String, String, String )
@@ -478,7 +465,7 @@ linkToParent parent children =
     List.map (\child -> ( parent, child.pid, "link" )) (AppsData.unwrapChildren children)
 
 
-appGraph : ProcessInfoApp -> Graph String String
+appGraph : ProcessInfoApp -> Graph String ()
 appGraph app_info =
     let
         nodes =
@@ -497,7 +484,7 @@ appGraph app_info =
             List.map (\( pid, name ) -> Node (pid_to_id pid id_map) name)
 
         make_edges id_map =
-            List.map (\( from_pid, to_pid, link_type ) -> Edge (pid_to_id from_pid id_map) (pid_to_id to_pid id_map) link_type)
+            List.map (\( from_pid, to_pid, _ ) -> Edge (pid_to_id from_pid id_map) (pid_to_id to_pid id_map) ())
     in
     Graph.fromNodesAndEdges (make_nodes get_ids_nodes nodes) (make_edges get_ids_nodes edges)
 
